@@ -29,6 +29,7 @@ package com.uimutilities;
 import com.google.inject.Provides;
 import com.uimutilities.cox.CoxExitOverlay;
 import com.uimutilities.cox.CoxGroundItems;
+import com.uimutilities.lootingbag.LootingBagProtection;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.events.GameObjectDespawned;
@@ -53,7 +54,7 @@ import net.runelite.client.util.LinkBrowser;
 	name = "UIM Utilities",
 	description = "Quality of life and safety warnings for ultimate ironman accounts",
 	tags = {"jake", "uim", "ultimate ironman", "ironman", "utilities", "warning", "items", "item", "ground",
-		"drop", "dropped", "deathpile", "floor", "storage", "cox", "chambers", "xeric", "olm", "raid", "raids", "exit", "leave"}
+		"drop", "dropped", "deathpile", "floor", "storage", "cox", "chambers", "xeric", "olm", "raid", "raids", "exit", "leave", "looting bag", "loot", "bag", "destroy", "protect"}
 )
 public class UimUtilitiesPlugin extends Plugin
 {
@@ -69,6 +70,9 @@ public class UimUtilitiesPlugin extends Plugin
 
 	@Inject
 	private CoxExitOverlay coxExitOverlay;
+
+	@Inject
+	private LootingBagProtection lootingBagProtection;
 
 	@Provides
 	UimUtilitiesConfig provideConfig(ConfigManager configManager)
@@ -137,6 +141,7 @@ public class UimUtilitiesPlugin extends Plugin
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
 		coxGroundItems.onMenuEntryAdded(event);
+		lootingBagProtection.onMenuEntryAdded(event);
 	}
 
 	// The config panel cannot host real buttons, so the Feedback "buttons" are checkboxes

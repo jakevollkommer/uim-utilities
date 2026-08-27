@@ -70,6 +70,25 @@ public interface UimUtilitiesConfig extends Config
 	}
 
 	@ConfigSection(
+		name = "Looting bag",
+		description = "Protection for the looting bag and what is inside it",
+		position = 1
+	)
+	String lootingBagSection = "lootingBagSection";
+
+	@ConfigItem(
+		keyName = "hideLootingBagDestroy",
+		name = "Hide the Destroy option",
+		description = "Take Destroy off the looting bag, which loses everything inside it",
+		section = lootingBagSection,
+		position = 0
+	)
+	default boolean hideLootingBagDestroy()
+	{
+		return true;
+	}
+
+	@ConfigSection(
 		name = "Feedback",
 		description = "Suggestions, bug reports, and support",
 		position = 99

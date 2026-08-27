@@ -11,6 +11,11 @@ items are still on the ground inside the raid, the exit is labelled with how man
 left and its left-click option is deprioritized, so leaving takes a deliberate
 right-click. The menu entry is never removed.
 
+### Looting bag: no Destroy option
+
+Destroying a looting bag outside the Wilderness loses everything inside it. The Destroy
+option is taken off the bag while the setting is on, so there is nothing to misclick.
+
 ## Development
 
 ```

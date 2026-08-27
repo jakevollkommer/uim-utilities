@@ -64,6 +64,29 @@ Everything is gated on the in-dungeon varbit plus the CoX region list
 (`12889, 13136-13141, 13145, 13393-13397, 13401`), because object ids are reused
 across unrelated content.
 
+## Feature 2 — take Destroy off the looting bag
+
+**Status: implemented, not yet verified in-game.** Branch `looting-bag-destroy`, stacked
+on `cox-ground-item-warning`.
+
+Destroying a looting bag outside the Wilderness loses everything inside it. While
+`hideLootingBagDestroy` is on (default), the Destroy entry is removed from the bag's
+menu, in `com.uimutilities.lootingbag.LootingBagProtection`. Matching is
+`event.getItemId()` in `{LOOTING_BAG 11941, LOOTING_BAG_OPEN 22586}` plus the option
+text `Destroy`, and removal is `client.getMenu().removeMenuEntry(...)`.
+
+**Hub risk, decide before submitting.** The rejected-features wiki lists "conditional
+menu entry removing" as overpowered, with the example of hiding attack options based on
+game state. This removal is unconditional while the setting is on and only touches a
+destructive inventory option, so it is a different thing, but it is still entry removal
+and a reviewer may read it the other way. The fallback that is certainly accepted is
+deprioritizing Destroy instead, the same treatment feature 1 gives the raid exit.
+
+**Still to verify in-game.** That the entry is actually gone from both the closed and
+open bag, in the inventory and anywhere else the bag shows a Destroy option, and that
+turning the setting off restores it without a relog. The bank placeholder ids (18274,
+22587) are not matched: confirm placeholders show Release rather than Destroy.
+
 ## Later feature candidates (not designed yet)
 
 - Deathpile timer/location awareness (note: Adam's `Death Indicator` hub plugin
