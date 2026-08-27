@@ -30,6 +30,7 @@ import com.google.inject.Provides;
 import com.uimutilities.cox.CoxExitOverlay;
 import com.uimutilities.cox.CoxGroundItems;
 import com.uimutilities.lootingbag.LootingBagProtection;
+import com.uimutilities.shops.SellProtection;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.events.GameObjectDespawned;
@@ -54,7 +55,7 @@ import net.runelite.client.util.LinkBrowser;
 	name = "UIM Utilities",
 	description = "Quality of life and safety warnings for ultimate ironman accounts",
 	tags = {"jake", "uim", "ultimate ironman", "ironman", "utilities", "warning", "items", "item", "ground",
-		"drop", "dropped", "deathpile", "floor", "storage", "cox", "chambers", "xeric", "olm", "raid", "raids", "exit", "leave", "looting bag", "loot", "bag", "destroy", "protect"}
+		"drop", "dropped", "deathpile", "floor", "storage", "cox", "chambers", "xeric", "olm", "raid", "raids", "exit", "leave", "looting bag", "loot", "bag", "destroy", "protect", "shop", "sell", "store", "general store"}
 )
 public class UimUtilitiesPlugin extends Plugin
 {
@@ -74,6 +75,9 @@ public class UimUtilitiesPlugin extends Plugin
 	@Inject
 	private LootingBagProtection lootingBagProtection;
 
+	@Inject
+	private SellProtection sellProtection;
+
 	@Provides
 	UimUtilitiesConfig provideConfig(ConfigManager configManager)
 	{
@@ -84,6 +88,7 @@ public class UimUtilitiesPlugin extends Plugin
 	protected void startUp()
 	{
 		overlayManager.add(coxExitOverlay);
+		sellProtection.rebuildFromConfig();
 		// Items already lying on the floor only fire spawn events on the next scene load
 		clientThread.invokeLater(coxGroundItems::rebuildFromScene);
 	}
@@ -142,6 +147,7 @@ public class UimUtilitiesPlugin extends Plugin
 	{
 		coxGroundItems.onMenuEntryAdded(event);
 		lootingBagProtection.onMenuEntryAdded(event);
+		sellProtection.onMenuEntryAdded(event);
 	}
 
 	// The config panel cannot host real buttons, so the Feedback "buttons" are checkboxes
@@ -152,6 +158,12 @@ public class UimUtilitiesPlugin extends Plugin
 	{
 		if (!UimUtilitiesConfig.GROUP.equals(event.getGroup()) || event.getNewValue() == null)
 		{
+			return;
+		}
+
+		if (UimUtilitiesConfig.PROTECTED_ITEMS_KEY.equals(event.getKey()))
+		{
+			sellProtection.rebuildFromConfig();
 			return;
 		}
 

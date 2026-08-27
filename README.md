@@ -16,6 +16,14 @@ right-click. The menu entry is never removed.
 Destroying a looting bag outside the Wilderness loses everything inside it. The Destroy
 option is taken off the bag while the setting is on, so there is nothing to misclick.
 
+### Shops: no selling protected items
+
+A general store will buy a twisted bow, and the item is gone the moment the shop closes.
+The Sell options are taken off every item on the protected list, which starts as the gear
+from the [ultimate ironman equipment guide](https://oldschool.runescape.wiki/w/Ultimate_Ironman_Guide/Equipment).
+Entries are item names with `*` wildcards, and a plain name also covers that item's
+charged, ornamented and degraded variants.
+
 ## Development
 
 ```

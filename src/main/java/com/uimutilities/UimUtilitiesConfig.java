@@ -26,6 +26,7 @@
  */
 package com.uimutilities;
 
+import com.uimutilities.shops.ProtectedItems;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -35,6 +36,7 @@ import net.runelite.client.config.ConfigSection;
 public interface UimUtilitiesConfig extends Config
 {
 	String GROUP = "uimutilities";
+	String PROTECTED_ITEMS_KEY = "protectedItems";
 	String SUGGEST_BUTTON_KEY = "suggestButton";
 	String SUPPORT_BUTTON_KEY = "supportButton";
 
@@ -86,6 +88,37 @@ public interface UimUtilitiesConfig extends Config
 	default boolean hideLootingBagDestroy()
 	{
 		return true;
+	}
+
+	@ConfigSection(
+		name = "Shops",
+		description = "Protection while a shop is open",
+		position = 2
+	)
+	String shopSection = "shopSection";
+
+	@ConfigItem(
+		keyName = "blockSelling",
+		name = "Block selling protected items",
+		description = "Take the Sell options off the items on the list below",
+		section = shopSection,
+		position = 0
+	)
+	default boolean blockSelling()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = PROTECTED_ITEMS_KEY,
+		name = "Protected items",
+		description = "Item names, comma separated. * matches anything, and a name also covers its charged and degraded variants",
+		section = shopSection,
+		position = 1
+	)
+	default String protectedItems()
+	{
+		return ProtectedItems.DEFAULT;
 	}
 
 	@ConfigSection(

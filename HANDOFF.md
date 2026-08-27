@@ -87,6 +87,39 @@ open bag, in the inventory and anywhere else the bag shows a Destroy option, and
 turning the setting off restores it without a relog. The bank placeholder ids (18274,
 22587) are not matched: confirm placeholders show Release rather than Destroy.
 
+## Feature 3 — no selling protected items to shops
+
+**Status: implemented, not yet verified in-game.** Branch `shop-sell-protection`, stacked
+on `looting-bag-destroy`.
+
+A general store will buy a twisted bow, and it is gone the moment the shop closes. While
+`blockSelling` is on (default), every `Sell` entry is removed from items matching the
+`protectedItems` list, in `com.uimutilities.shops.SellProtection`. Matching runs on the
+menu entry's target text, so no item composition lookups on the menu path.
+
+- Entries are item names, comma separated, `*` wildcards allowed, the same shape as the
+  Ground Items lists. Parsing is `Text.fromCSV`, wildcards are `WildcardMatcher`, exact
+  names answer from a lowercased set so only wildcard entries are walked.
+- A plain name also covers that item's variants: a trailing bracket for charges and
+  ornaments (`Trident of the seas (full)`, `Dragon dagger(p++)`) and a trailing number for
+  degraded barrows pieces (`Ahrim's robetop 75`). Verified offline against both.
+- The default list is the 233 items linked from the ultimate ironman guide's equipment
+  page, in `ProtectedItems.DEFAULT`. It was generated from the page's wikitext through the
+  wiki API: every `{{plink}}` target, resolved through redirects, with the aggregate pages
+  (the blessed dragonhide slots, god blessings, god capes) expanded to their real item
+  names, and `Damaged book (Ancient)` corrected to the in-game `Damaged book`.
+
+**Hub risk, same as feature 2.** This is menu entry removal driven by a user list, not a
+game state, but a reviewer may still read it against the rejected-features wiki's
+"conditional menu entry removing" line. Deprioritizing the Sell entries is the fallback.
+
+**Still to verify in-game.** That the shop inventory's Sell options carry the item name in
+the target text and an item id (that is what the matching reads), that `Value` and
+`Examine` survive, that the left-click sell is gone as well as the right-click ones, and
+that editing the list applies without a relog. Also worth a pass on how many of the 233
+names actually match in-game names: they come from wiki infobox names, and any that are
+wrong simply fail to protect, silently.
+
 ## Later feature candidates (not designed yet)
 
 - Deathpile timer/location awareness (note: Adam's `Death Indicator` hub plugin
