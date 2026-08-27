@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
 import net.runelite.api.GameState;
@@ -25,10 +26,10 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.ItemDespawned;
 import net.runelite.api.events.ItemSpawned;
 import net.runelite.api.events.MenuEntryAdded;
-import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ObjectID;
@@ -45,6 +46,7 @@ import net.runelite.api.gameval.VarbitID;
  * full of the player's own ground items that were never carried in, mainly loot from
  * everything killed along the way, and warning about those is noise.
  */
+@Slf4j
 @Singleton
 public class CoxGroundItems
 {
@@ -64,10 +66,9 @@ public class CoxGroundItems
 		13393, 13394, 13395, 13396, 13397, 13401
 	);
 
-	private static final String DROP = "Drop";
-
-	// A drop reaches the floor a tick or two after the click, and up to two tiles away
-	// if the player is running as it lands
+	// The inventory change and the item landing on the floor are two events of the same
+	// server tick and arrive in either order, so each waits a few ticks for the other.
+	// The item lands up to two tiles away if the player is running as it drops.
 	private static final int DROP_TIMEOUT_TICKS = 3;
 	private static final int DROP_RANGE = 2;
 
@@ -80,14 +81,19 @@ public class CoxGroundItems
 	private final Map<WorldPoint, Map<Integer, Integer>> itemsByTile = new HashMap<>();
 	private final List<TileObject> exitObjects = new ArrayList<>();
 
-	// Drop clicks waiting for the item to appear on the floor
-	private final List<PendingDrop> pendingDrops = new ArrayList<>();
+	// A drop is an item leaving the inventory and landing on the floor next to the player.
+	// Whichever of the two is seen first waits here for the other.
+	private final List<Pending> pendingDrops = new ArrayList<>();
+	private final List<Pending> pendingSpawns = new ArrayList<>();
+	private final Map<Integer, Integer> inventoryQuantities = new HashMap<>();
 
-	// Item ids carried into the raid. Empty means it was never captured, in which case
-	// every drop counts rather than none: a missed warning is what loses the items.
+	// Item ids carried into the raid, captured on the first tick inside it. Until that
+	// succeeds every drop counts rather than none: a missed warning is what loses items.
 	private final Set<Integer> carriedIn = new HashSet<>();
+	private boolean carriedInCaptured;
 
 	private boolean sceneLoadPending;
+	private boolean wasInRaid;
 
 	// Whether the raid is the loaded scene, refreshed once a tick so that item spawns
 	// anywhere in the game do not each pay for a region scan
@@ -105,7 +111,10 @@ public class CoxGroundItems
 		itemsByTile.clear();
 		exitObjects.clear();
 		pendingDrops.clear();
+		pendingSpawns.clear();
+		inventoryQuantities.clear();
 		carriedIn.clear();
+		carriedInCaptured = false;
 		sceneLoadPending = false;
 	}
 
@@ -121,7 +130,6 @@ public class CoxGroundItems
 
 		// Items already on the floor cannot be told apart from raid loot, so the count
 		// starts empty and follows what is dropped from here on
-		captureCarriedItems();
 		scanLoadedSceneForExits();
 	}
 
@@ -144,16 +152,21 @@ public class CoxGroundItems
 		return config.coxWarnGroundItems() && !itemsByTile.isEmpty() && isInRaidDungeon();
 	}
 
-	public void onMenuOptionClicked(MenuOptionClicked event)
+	public void onItemContainerChanged(ItemContainerChanged event)
 	{
-		boolean isDropOfACarriedItem = DROP.equals(event.getMenuOption())
-			&& event.getItemId() > 0
-			&& wasCarriedIn(event.getItemId())
-			&& isInRaidDungeon();
-		if (isDropOfACarriedItem)
+		if (event.getContainerId() != InventoryID.INV)
 		{
-			pendingDrops.add(new PendingDrop(event.getItemId(), client.getTickCount()));
+			return;
 		}
+
+		Map<Integer, Integer> current = quantitiesOf(event.getItemContainer());
+		if (!sceneLoadPending && isInRaidDungeon())
+		{
+			noticeItemsLeavingTheInventory(current);
+		}
+
+		inventoryQuantities.clear();
+		inventoryQuantities.putAll(current);
 	}
 
 	public void onItemSpawned(ItemSpawned event)
@@ -165,10 +178,22 @@ public class CoxGroundItems
 		}
 
 		Tile tile = event.getTile();
-		if (claimPendingDrop(event.getItem().getId(), tile))
+		int itemId = event.getItem().getId();
+		if (!isNextToPlayer(tile))
 		{
-			remember(templatePointOf(tile), event.getItem().getId());
+			return;
 		}
+
+		WorldPoint point = templatePointOf(tile);
+		if (claim(pendingDrops, itemId) == null)
+		{
+			log.debug("CoX: item {} landed at {} with nothing leaving the inventory yet", itemId, point);
+			pendingSpawns.add(new Pending(itemId, point, client.getTickCount()));
+			return;
+		}
+
+		log.debug("CoX: counted dropped item {} at {}", itemId, point);
+		remember(point, itemId);
 	}
 
 	public void onItemDespawned(ItemDespawned event)
@@ -204,6 +229,7 @@ public class CoxGroundItems
 			// stay counted, since the rooms they are in still hold them
 			exitObjects.clear();
 			pendingDrops.clear();
+			pendingSpawns.clear();
 			sceneLoadPending = true;
 			return;
 		}
@@ -219,10 +245,23 @@ public class CoxGroundItems
 	{
 		coxSceneLoaded = isCoxSceneLoaded();
 		sceneLoadPending = false;
-		expirePendingDrops();
+		expirePending();
 
-		boolean holdsRaidState = !itemsByTile.isEmpty() || !exitObjects.isEmpty();
-		if (holdsRaidState && !isInRaidDungeon())
+		boolean inRaid = isInRaidDungeon();
+		if (inRaid != wasInRaid)
+		{
+			wasInRaid = inRaid;
+			log.debug("CoX: {} the raid dungeon", inRaid ? "entered" : "left");
+		}
+
+		if (inRaid)
+		{
+			captureCarriedItemsOnce();
+			return;
+		}
+
+		boolean holdsRaidState = !itemsByTile.isEmpty() || !exitObjects.isEmpty() || carriedInCaptured;
+		if (holdsRaidState)
 		{
 			reset();
 		}
@@ -230,18 +269,11 @@ public class CoxGroundItems
 
 	public void onVarbitChanged(VarbitChanged event)
 	{
-		if (event.getVarbitId() != VarbitID.RAIDS_CLIENT_INDUNGEON)
-		{
-			return;
-		}
-
-		if (event.getValue() == 0)
+		boolean leftTheDungeon = event.getVarbitId() == VarbitID.RAIDS_CLIENT_INDUNGEON && event.getValue() == 0;
+		if (leftTheDungeon)
 		{
 			reset();
-			return;
 		}
-
-		captureCarriedItems();
 	}
 
 	public void onMenuEntryAdded(MenuEntryAdded event)
@@ -258,22 +290,45 @@ public class CoxGroundItems
 		}
 	}
 
-	/** Everything in the inventory and worn on entering the raid: what can be left behind. */
-	private void captureCarriedItems()
+	/**
+	 * Everything held on the first tick inside the raid: what the player can leave behind.
+	 * Both containers or neither, since capturing only half of them would silently stop
+	 * protecting whatever was in the other half.
+	 */
+	private void captureCarriedItemsOnce()
 	{
-		carriedIn.clear();
-		addContainerItems(InventoryID.INV);
-		addContainerItems(InventoryID.WORN);
-	}
-
-	private void addContainerItems(int inventoryId)
-	{
-		ItemContainer container = client.getItemContainer(inventoryId);
-		if (container == null)
+		if (carriedInCaptured)
 		{
 			return;
 		}
 
+		ItemContainer inventory = client.getItemContainer(InventoryID.INV);
+		ItemContainer worn = client.getItemContainer(InventoryID.WORN);
+		if (inventory == null || worn == null)
+		{
+			return;
+		}
+
+		carriedIn.clear();
+		addItemIds(inventory);
+		addItemIds(worn);
+		if (carriedIn.isEmpty())
+		{
+			// A container can exist before the server has filled it, and capturing it
+			// empty would leave every drop looking like something picked up in the raid
+			return;
+		}
+
+		// Seed the baseline here too: without it the first drop of the raid would have
+		// nothing to be compared against
+		inventoryQuantities.clear();
+		inventoryQuantities.putAll(quantitiesOf(inventory));
+		carriedInCaptured = true;
+		log.debug("CoX: carried in {} item ids", carriedIn.size());
+	}
+
+	private void addItemIds(ItemContainer container)
+	{
 		for (Item item : container.getItems())
 		{
 			if (item.getId() > 0)
@@ -285,36 +340,82 @@ public class CoxGroundItems
 
 	private boolean wasCarriedIn(int itemId)
 	{
-		return carriedIn.isEmpty() || carriedIn.contains(itemId);
+		return !carriedInCaptured || carriedIn.contains(itemId);
 	}
 
-	/** @return true when this spawn is the item a recent drop click was waiting for. */
-	private boolean claimPendingDrop(int itemId, Tile tile)
+	/** Pairs each item that left the inventory with the one that landed on the floor. */
+	private void noticeItemsLeavingTheInventory(Map<Integer, Integer> current)
 	{
-		Player player = client.getLocalPlayer();
-		WorldPoint droppedAt = player == null ? null : player.getWorldLocation();
-		if (droppedAt == null || droppedAt.distanceTo(tile.getWorldLocation()) > DROP_RANGE)
+		int tick = client.getTickCount();
+		for (Map.Entry<Integer, Integer> held : inventoryQuantities.entrySet())
 		{
-			return false;
-		}
-
-		int oldestAllowed = client.getTickCount() - DROP_TIMEOUT_TICKS;
-		for (int i = 0; i < pendingDrops.size(); i++)
-		{
-			PendingDrop drop = pendingDrops.get(i);
-			if (drop.itemId == itemId && drop.tick >= oldestAllowed)
+			int itemId = held.getKey();
+			if (current.getOrDefault(itemId, 0) >= held.getValue())
 			{
-				pendingDrops.remove(i);
-				return true;
+				continue;
+			}
+
+			if (!wasCarriedIn(itemId))
+			{
+				log.debug("CoX: item {} left the inventory but was not carried in", itemId);
+				continue;
+			}
+
+			Pending spawn = claim(pendingSpawns, itemId);
+			if (spawn == null)
+			{
+				pendingDrops.add(new Pending(itemId, null, tick));
+				continue;
+			}
+
+			log.debug("CoX: counted dropped item {} at {}", itemId, spawn.tile);
+			remember(spawn.tile, itemId);
+		}
+	}
+
+	private static Map<Integer, Integer> quantitiesOf(ItemContainer container)
+	{
+		Map<Integer, Integer> quantities = new HashMap<>();
+		if (container != null)
+		{
+			for (Item item : container.getItems())
+			{
+				if (item.getId() > 0)
+				{
+					quantities.merge(item.getId(), item.getQuantity(), Integer::sum);
+				}
 			}
 		}
-		return false;
+		return quantities;
 	}
 
-	private void expirePendingDrops()
+	private boolean isNextToPlayer(Tile tile)
+	{
+		Player player = client.getLocalPlayer();
+		WorldPoint playerAt = player == null ? null : player.getWorldLocation();
+		return playerAt != null && playerAt.distanceTo(tile.getWorldLocation()) <= DROP_RANGE;
+	}
+
+	/** @return the waiting half of a drop, removed from its list, or null. */
+	private Pending claim(List<Pending> waiting, int itemId)
 	{
 		int oldestAllowed = client.getTickCount() - DROP_TIMEOUT_TICKS;
-		pendingDrops.removeIf(drop -> drop.tick < oldestAllowed);
+		for (int i = 0; i < waiting.size(); i++)
+		{
+			Pending pending = waiting.get(i);
+			if (pending.itemId == itemId && pending.tick >= oldestAllowed)
+			{
+				return waiting.remove(i);
+			}
+		}
+		return null;
+	}
+
+	private void expirePending()
+	{
+		int oldestAllowed = client.getTickCount() - DROP_TIMEOUT_TICKS;
+		pendingDrops.removeIf(pending -> pending.tick < oldestAllowed);
+		pendingSpawns.removeIf(pending -> pending.tick < oldestAllowed);
 	}
 
 	private void scanLoadedSceneForExits()
@@ -435,14 +536,17 @@ public class CoxGroundItems
 		}
 	}
 
-	private static class PendingDrop
+	/** Half of a drop: an item that left the inventory, or one that landed on the floor. */
+	private static class Pending
 	{
 		private final int itemId;
+		private final WorldPoint tile;
 		private final int tick;
 
-		private PendingDrop(int itemId, int tick)
+		private Pending(int itemId, WorldPoint tile, int tick)
 		{
 			this.itemId = itemId;
+			this.tile = tile;
 			this.tick = tick;
 		}
 	}
