@@ -6,10 +6,11 @@ Quality of life and safety warnings for ultimate ironman accounts
 
 ### Chambers of Xeric: ground items left behind
 
-The raid destroys everything left on the floor once you leave. While any of your own
-items are still on the ground inside the raid, the exit is labelled with how many you
-left and its left-click option is deprioritized, so leaving takes a deliberate
-right-click. The menu entry is never removed.
+The raid destroys everything left on the floor once you leave. While anything you carried
+in and dropped is still on the ground, the exit is labelled with how many items you left
+and its left-click option is deprioritized, so leaving takes a deliberate right-click. The
+menu entry is never removed. Loot picked up inside the raid is not counted, only what you
+brought in and dropped.
 
 ### Looting bag: no Destroy option
 

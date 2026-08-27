@@ -22,19 +22,26 @@ still on the ground is gone forever. People do leave without picking it up.
 routes events to it. `CoxExitOverlay` draws the label. Config lives in a "Chambers of
 Xeric" section: `coxWarnGroundItems` (master) and `coxDeprioritizeExit`.
 
-- Ground items are counted from `ItemSpawned`/`ItemDespawned` where
-  `TileItem.getOwnership() == OWNERSHIP_SELF`, gated on
-  `VarbitID.RAIDS_CLIENT_INDUNGEON == 1` plus a loaded CoX region.
+- Only items the player carried in and then dropped are counted. A drop click arms a
+  pending drop (item id plus tick), and the next self-owned `ItemSpawned` of that id
+  within 3 ticks and 2 tiles of the player claims it. Everything else on the floor is
+  ignored, which is the fix for the first in-game run: a raid is full of the player's own
+  ground items that were never carried in, mostly loot from what was killed on the way,
+  and the count read 16 in a raid where nothing had been dropped.
+- What counts as carried in is the inventory plus worn items, snapshotted when the
+  in-dungeon varbit goes to 1. An empty snapshot means it was never captured, and then
+  every drop counts rather than none: a missed warning is what loses the items.
+- Everything is gated on `VarbitID.RAIDS_CLIENT_INDUNGEON == 1` plus a loaded CoX region.
 - Tiles are keyed by their **instance template point**
   (`WorldPoint.fromLocalInstance`), not by instance world coordinates: the instance
   chunk mapping is rebuilt on every scene load, so raw world points would not match
   the same physical tile between rooms.
-- Items are remembered across the scene reloads between rooms. On the first tick
-  after a load, remembered tiles that the new scene *does* cover but did not report
-  an item on are dropped, so a picked-up item cannot linger as a phantom warning.
-  Tiles outside the new scene are kept.
-- Enabling the plugin mid-raid scans the loaded scene once (`rebuildFromScene`),
-  because items already on the floor do not fire spawn events.
+- Drops are remembered across the scene reloads between rooms. Spawns and despawns during
+  a load are ignored, since a load re-reports everything the new scene covers and reports
+  nothing for the rooms that dropped out of it; a reload cannot double count and cannot
+  wipe the rooms left behind.
+- Enabling the plugin mid-raid starts the count at zero. Items already on the floor cannot
+  be told apart from raid loot, so tracking follows what is dropped from then on.
 - The exit's left-click option is deprioritized (never removed) while items remain,
   matching `nex-leech-utility`'s `maybeDeprioritizeDoorEntry`.
 

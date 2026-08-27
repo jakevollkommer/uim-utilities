@@ -40,6 +40,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemDespawned;
 import net.runelite.api.events.ItemSpawned;
 import net.runelite.api.events.MenuEntryAdded;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -140,6 +141,12 @@ public class UimUtilitiesPlugin extends Plugin
 	public void onVarbitChanged(VarbitChanged event)
 	{
 		coxGroundItems.onVarbitChanged(event);
+	}
+
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked event)
+	{
+		coxGroundItems.onMenuOptionClicked(event);
 	}
 
 	@Subscribe
