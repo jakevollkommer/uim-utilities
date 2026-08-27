@@ -27,25 +27,48 @@
 package com.uimutilities;
 
 import com.google.inject.Provides;
+import com.uimutilities.cox.CoxExitOverlay;
+import com.uimutilities.cox.CoxGroundItems;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.events.GameObjectDespawned;
+import net.runelite.api.events.GameObjectSpawned;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ItemDespawned;
+import net.runelite.api.events.ItemSpawned;
+import net.runelite.api.events.MenuEntryAdded;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.LinkBrowser;
 
 @Slf4j
 @PluginDescriptor(
 	name = "UIM Utilities",
 	description = "Quality of life and safety warnings for ultimate ironman accounts",
-	tags = {"jake", "uim,ultimate ironman,ironman,utilities,warning,items,ground,cox,raid"}
+	tags = {"jake", "uim", "ultimate ironman", "ironman", "utilities", "warning", "items", "item", "ground",
+		"drop", "dropped", "deathpile", "floor", "storage", "cox", "chambers", "xeric", "olm", "raid", "raids", "exit", "leave"}
 )
 public class UimUtilitiesPlugin extends Plugin
 {
 	@Inject
-	private UimUtilitiesConfig config;
+	private ClientThread clientThread;
+
+	@Inject
+	private OverlayManager overlayManager;
+
+	// Each feature owns its own state and rules; the plugin only routes events to them
+	@Inject
+	private CoxGroundItems coxGroundItems;
+
+	@Inject
+	private CoxExitOverlay coxExitOverlay;
 
 	@Provides
 	UimUtilitiesConfig provideConfig(ConfigManager configManager)
@@ -56,11 +79,64 @@ public class UimUtilitiesPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		overlayManager.add(coxExitOverlay);
+		// Items already lying on the floor only fire spawn events on the next scene load
+		clientThread.invokeLater(coxGroundItems::rebuildFromScene);
 	}
 
 	@Override
 	protected void shutDown()
 	{
+		overlayManager.remove(coxExitOverlay);
+		coxGroundItems.reset();
+	}
+
+	@Subscribe
+	public void onItemSpawned(ItemSpawned event)
+	{
+		coxGroundItems.onItemSpawned(event);
+	}
+
+	@Subscribe
+	public void onItemDespawned(ItemDespawned event)
+	{
+		coxGroundItems.onItemDespawned(event);
+	}
+
+	@Subscribe
+	public void onGameObjectSpawned(GameObjectSpawned event)
+	{
+		coxGroundItems.onGameObjectSpawned(event);
+	}
+
+	@Subscribe
+	public void onGameObjectDespawned(GameObjectDespawned event)
+	{
+		coxGroundItems.onGameObjectDespawned(event);
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		coxGroundItems.onGameStateChanged(event);
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		coxGroundItems.onGameTick();
+	}
+
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		coxGroundItems.onVarbitChanged(event);
+	}
+
+	@Subscribe
+	public void onMenuEntryAdded(MenuEntryAdded event)
+	{
+		coxGroundItems.onMenuEntryAdded(event);
 	}
 
 	// The config panel cannot host real buttons, so the Feedback "buttons" are checkboxes

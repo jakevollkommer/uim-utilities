@@ -39,6 +39,37 @@ public interface UimUtilitiesConfig extends Config
 	String SUPPORT_BUTTON_KEY = "supportButton";
 
 	@ConfigSection(
+		name = "Chambers of Xeric",
+		description = "Warnings for the Chambers of Xeric",
+		position = 0
+	)
+	String coxSection = "coxSection";
+
+	@ConfigItem(
+		keyName = "coxWarnGroundItems",
+		name = "Warn about ground items",
+		description = "Warn at the raid exit while your own items are still on the floor",
+		section = coxSection,
+		position = 0
+	)
+	default boolean coxWarnGroundItems()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "coxDeprioritizeExit",
+		name = "Deprioritize the exit",
+		description = "Push the exit's left-click option down while items are left behind",
+		section = coxSection,
+		position = 1
+	)
+	default boolean coxDeprioritizeExit()
+	{
+		return true;
+	}
+
+	@ConfigSection(
 		name = "Feedback",
 		description = "Suggestions, bug reports, and support",
 		position = 99
