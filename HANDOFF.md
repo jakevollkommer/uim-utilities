@@ -18,9 +18,12 @@ still on the ground is gone forever. People do leave without picking it up.
 
 ### What was built
 
-`com.uimutilities.cox.CoxGroundItems` owns the whole feature; the plugin class only
-routes events to it. `CoxExitOverlay` draws the label. Config lives in a "Chambers of
-Xeric" section: `coxWarnGroundItems` (master) and `coxDeprioritizeExit`.
+`com.uimutilities.cox` owns the feature. `GroundItemWarning` is the coordinator and the only
+public type in it; `RaidScope` answers where and when the raid counts, `CarriedItems` holds what
+was brought in, `InventoryLedger` names what left the inventory, `DropWatcher` pairs that with what
+landed on the floor, `DroppedItems` keeps the count per tile, `RaidExits` owns the exit ids and the
+scene scan, and `ExitLabelOverlay` draws the label. Config lives in a "Chambers of Xeric" section:
+`coxWarnGroundItems` (master) and `coxDeprioritizeExit`.
 
 - Only items the player carried in and then dropped are counted. A drop click arms a
   pending drop (item id plus tick), and the next self-owned `ItemSpawned` of that id
@@ -45,28 +48,35 @@ Xeric" section: `coxWarnGroundItems` (master) and `coxDeprioritizeExit`.
 - The exit's left-click option is deprioritized (never removed) while items remain,
   matching `nex-leech-utility`'s `maybeDeprioritizeDoorEntry`.
 
-**Remove before submitting to the hub:** `logObjectOnce` in `CoxGroundItems` names every
-interactable object in the raid at debug level. It exists only to identify the exit, since
-the ids below are guesses, and should go once they are confirmed.
+**Remove before submitting to the hub:** `RaidExits.describeOnce` names every interactable object
+in the raid at debug level. It exists only to identify the exits that are still guesses, and should
+go once they are confirmed, along with the ids that never appear.
 
 ### Verified in-game 2026-08-27
 
-The raid gate (in-dungeon varbit plus region), the carried-in snapshot, and the drop
-pairing all work: dropping a rune pickaxe logged `counted dropped item 1275`, with the
-floor spawn arriving before the inventory change and the pairing joining them.
+The raid gate (in-dungeon varbit plus region), the carried-in snapshot, the drop pairing, the
+pickup clearing the count, the exit scan and the label all work. Dropping a rune pickaxe logged
+`counted dropped item 1275` with the floor spawn arriving first and the inventory change joining
+it, picking it up took the count back to 0, and the label drew on the steps.
 
-The exit ids are still wrong. The deprioritize did not fire on the raid entrance, and no
-label was drawn, because none of the four candidate ids is the object being clicked.
+The deprioritize could not be judged: the steps are menu swapped in Jake's client, and a swap sets
+the left-click after the deprioritize is applied. Worth knowing generally, since it means the
+overlay is the real protection for anyone who swaps their exit.
+
+Two things cost a session each before that. The plugin was disabled in the profile
+(`runelite.uimutilitiesplugin=false`), which looks identical to a broken feature from the outside;
+check that first. And the dev client sideloads the deployed jar on top of the copy `runPlugin`
+builds, so the plugin appears twice and both copies share one config key, which is the likely way
+it got disabled.
 
 ### Still to verify in-game (a raid is needed, nothing here is confirmed)
 
-1. **Which object is the exit.** All four candidates are deprioritized:
-   `RAIDS_BOSSEXIT` 29996, `RAIDS_EXIT_STEPS` 29778, and the raw ids 49999
-   (`RAIDS_EXIT_STEPS_MULTI`) / 50000 (`RAIDS_EXIT_STEPS_RELOAD`) from the
-   package-private `ObjectID1`. Confirm which one actually appears, and trim the set
-   to the exits that destroy items. The cache dumper in `~/projects/osrs/runelite`
-   could not vet these: its `:cache` build no longer parses the live cache
-   (`ObjectLoader.processOp` throws on an unknown opcode).
+1. **Which object is each exit.** 49999 (`RAIDS_EXIT_STEPS_MULTI`) is confirmed: it is the Climb
+   steps out of the first room, and it also carries a Reload option. Still unconfirmed are
+   `RAIDS_BOSSEXIT` 29996, `RAIDS_EXIT_STEPS` 29778 and 50000 (`RAIDS_EXIT_STEPS_RELOAD`); the
+   post-Olm exit in particular has not been seen. Trim the set to what appears. The cache dumper in
+   `~/projects/osrs/runelite` could not vet these: its `:cache` build no longer parses the live
+   cache (`ObjectLoader.processOp` throws on an unknown opcode).
 2. **That the exit is a game object at all**, not a widget button. If it is a widget,
    the deprioritize half of the feature does not apply and the design becomes a
    confirm overlay.

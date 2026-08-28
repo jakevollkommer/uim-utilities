@@ -26,7 +26,7 @@
  */
 package com.uimutilities;
 
-import com.uimutilities.shops.ProtectedItems;
+import com.uimutilities.shops.DefaultProtectedItems;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -118,7 +118,7 @@ public interface UimUtilitiesConfig extends Config
 	)
 	default String protectedItems()
 	{
-		return ProtectedItems.DEFAULT;
+		return DefaultProtectedItems.NAMES;
 	}
 
 	@ConfigSection(

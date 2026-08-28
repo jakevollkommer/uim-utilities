@@ -1,5 +1,6 @@
 package com.uimutilities.lootingbag;
 
+import com.uimutilities.Feature;
 import com.uimutilities.UimUtilitiesConfig;
 import java.util.Set;
 import javax.inject.Inject;
@@ -9,13 +10,12 @@ import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.gameval.ItemID;
 
 /**
- * Destroying a looting bag outside the Wilderness takes everything inside with it, which
- * for an ultimate ironman is the whole point of carrying one. The Destroy option is taken
- * off the bag entirely while the setting is on, so there is nothing to misclick; the bag
- * can still be destroyed by turning the setting off.
+ * Destroying a looting bag outside the Wilderness takes everything inside it with it, which for an
+ * ultimate ironman is the whole point of carrying one. The Destroy option comes off the bag while
+ * the setting is on, so there is nothing to misclick, and turning the setting off gives it back.
  */
 @Singleton
-public class LootingBagProtection
+public class LootingBagProtection implements Feature
 {
 	private static final String DESTROY = "Destroy";
 
@@ -34,9 +34,10 @@ public class LootingBagProtection
 		this.config = config;
 	}
 
+	@Override
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
-		// Most entries carry no item at all, so the id is the cheap way out of this
+		// Most menu entries carry no item at all, so the id is the cheap way out of this
 		boolean isLootingBagEntry = LOOTING_BAG_IDS.contains(event.getItemId());
 		if (!isLootingBagEntry || !DESTROY.equals(event.getOption()) || !config.hideLootingBagDestroy())
 		{

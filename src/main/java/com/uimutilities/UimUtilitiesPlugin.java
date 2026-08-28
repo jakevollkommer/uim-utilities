@@ -27,12 +27,10 @@
 package com.uimutilities;
 
 import com.google.inject.Provides;
-import com.uimutilities.cox.CoxExitOverlay;
-import com.uimutilities.cox.CoxGroundItems;
+import com.uimutilities.cox.GroundItemWarning;
 import com.uimutilities.lootingbag.LootingBagProtection;
 import com.uimutilities.shops.SellProtection;
 import javax.inject.Inject;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
@@ -51,33 +49,36 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.LinkBrowser;
 
-@Slf4j
 @PluginDescriptor(
 	name = "UIM Utilities",
 	description = "Quality of life and safety warnings for ultimate ironman accounts",
 	tags = {"jake", "uim", "ultimate ironman", "ironman", "utilities", "warning", "items", "item", "ground",
-		"drop", "dropped", "deathpile", "floor", "storage", "cox", "chambers", "xeric", "olm", "raid", "raids", "exit", "leave", "looting bag", "loot", "bag", "destroy", "protect", "shop", "sell", "store", "general store"}
+		"drop", "dropped", "deathpile", "floor", "storage", "cox", "chambers", "xeric", "olm", "raid", "raids", "exit", "leave",
+		"looting bag", "loot", "bag", "destroy", "protect", "shop", "sell", "store", "general store"}
 )
 public class UimUtilitiesPlugin extends Plugin
 {
+	private static final String ISSUES_URL = "https://github.com/jakevollkommer/uim-utilities/issues";
+	private static final String SUPPORT_URL = "https://ko-fi.com/jakevollkommer";
+
 	@Inject
 	private ClientThread clientThread;
 
 	@Inject
 	private OverlayManager overlayManager;
 
-	// Each feature owns its own state and rules; the plugin only routes events to them
 	@Inject
-	private CoxGroundItems coxGroundItems;
-
-	@Inject
-	private CoxExitOverlay coxExitOverlay;
+	private GroundItemWarning groundItemWarning;
 
 	@Inject
 	private LootingBagProtection lootingBagProtection;
 
 	@Inject
 	private SellProtection sellProtection;
+
+	// A plain array, walked rather than streamed: menu entry events fire for every entry of every
+	// menu, and an iterator or a capturing lambda per event is allocation for nothing
+	private Feature[] features = new Feature[0];
 
 	@Provides
 	UimUtilitiesConfig provideConfig(ConfigManager configManager)
@@ -88,77 +89,121 @@ public class UimUtilitiesPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
-		overlayManager.add(coxExitOverlay);
-		sellProtection.rebuildFromConfig();
-		// Items already lying on the floor only fire spawn events on the next scene load
-		clientThread.invokeLater(coxGroundItems::rebuildFromScene);
+		features = new Feature[]
+		{
+			groundItemWarning,
+			lootingBagProtection,
+			sellProtection,
+		};
+
+		for (Feature feature : features)
+		{
+			feature.overlays().forEach(overlayManager::add);
+		}
+
+		clientThread.invokeLater(() ->
+		{
+			for (Feature feature : features)
+			{
+				feature.startUp();
+			}
+		});
 	}
 
 	@Override
 	protected void shutDown()
 	{
-		overlayManager.remove(coxExitOverlay);
-		coxGroundItems.reset();
-	}
-
-	@Subscribe
-	public void onItemSpawned(ItemSpawned event)
-	{
-		coxGroundItems.onItemSpawned(event);
-	}
-
-	@Subscribe
-	public void onItemDespawned(ItemDespawned event)
-	{
-		coxGroundItems.onItemDespawned(event);
-	}
-
-	@Subscribe
-	public void onGameObjectSpawned(GameObjectSpawned event)
-	{
-		coxGroundItems.onGameObjectSpawned(event);
-	}
-
-	@Subscribe
-	public void onGameObjectDespawned(GameObjectDespawned event)
-	{
-		coxGroundItems.onGameObjectDespawned(event);
-	}
-
-	@Subscribe
-	public void onGameStateChanged(GameStateChanged event)
-	{
-		coxGroundItems.onGameStateChanged(event);
+		for (Feature feature : features)
+		{
+			feature.overlays().forEach(overlayManager::remove);
+			feature.shutDown();
+		}
+		features = new Feature[0];
 	}
 
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
-		coxGroundItems.onGameTick();
+		for (Feature feature : features)
+		{
+			feature.onGameTick();
+		}
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		for (Feature feature : features)
+		{
+			feature.onGameStateChanged(event);
+		}
 	}
 
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
-		coxGroundItems.onVarbitChanged(event);
+		for (Feature feature : features)
+		{
+			feature.onVarbitChanged(event);
+		}
+	}
+
+	@Subscribe
+	public void onItemSpawned(ItemSpawned event)
+	{
+		for (Feature feature : features)
+		{
+			feature.onItemSpawned(event);
+		}
+	}
+
+	@Subscribe
+	public void onItemDespawned(ItemDespawned event)
+	{
+		for (Feature feature : features)
+		{
+			feature.onItemDespawned(event);
+		}
 	}
 
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
-		coxGroundItems.onItemContainerChanged(event);
+		for (Feature feature : features)
+		{
+			feature.onItemContainerChanged(event);
+		}
+	}
+
+	@Subscribe
+	public void onGameObjectSpawned(GameObjectSpawned event)
+	{
+		for (Feature feature : features)
+		{
+			feature.onGameObjectSpawned(event);
+		}
+	}
+
+	@Subscribe
+	public void onGameObjectDespawned(GameObjectDespawned event)
+	{
+		for (Feature feature : features)
+		{
+			feature.onGameObjectDespawned(event);
+		}
 	}
 
 	@Subscribe
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
-		coxGroundItems.onMenuEntryAdded(event);
-		lootingBagProtection.onMenuEntryAdded(event);
-		sellProtection.onMenuEntryAdded(event);
+		for (Feature feature : features)
+		{
+			feature.onMenuEntryAdded(event);
+		}
 	}
 
-	// The config panel cannot host real buttons, so the Feedback "buttons" are checkboxes
-	// that act as buttons: any click of the box, tick or untick, opens the link.
+	// The config panel cannot host real buttons, so the Feedback "buttons" are checkboxes that act as
+	// buttons: any click of the box, tick or untick, opens the link.
 	// This method MUST be named onConfigChanged — EventBus.register throws otherwise.
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
@@ -168,21 +213,20 @@ public class UimUtilitiesPlugin extends Plugin
 			return;
 		}
 
-		if (UimUtilitiesConfig.PROTECTED_ITEMS_KEY.equals(event.getKey()))
+		for (Feature feature : features)
 		{
-			sellProtection.rebuildFromConfig();
-			return;
+			feature.onConfigChanged(event);
 		}
 
 		if (UimUtilitiesConfig.SUGGEST_BUTTON_KEY.equals(event.getKey()))
 		{
-			LinkBrowser.browse("https://github.com/jakevollkommer/uim-utilities/issues");
+			LinkBrowser.browse(ISSUES_URL);
 			return;
 		}
 
 		if (UimUtilitiesConfig.SUPPORT_BUTTON_KEY.equals(event.getKey()))
 		{
-			LinkBrowser.browse("https://ko-fi.com/jakevollkommer");
+			LinkBrowser.browse(SUPPORT_URL);
 		}
 	}
 }

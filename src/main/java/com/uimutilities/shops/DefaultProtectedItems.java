@@ -1,15 +1,15 @@
 package com.uimutilities.shops;
 
 /**
- * The gear from the ultimate ironman guide's equipment page, which is what the default
- * protected list holds: https://oldschool.runescape.wiki/w/Ultimate_Ironman_Guide/Equipment
+ * The gear linked from the ultimate ironman guide's equipment page, which is what the protected
+ * list starts as: https://oldschool.runescape.wiki/w/Ultimate_Ironman_Guide/Equipment
  *
- * Names rather than ids, so the list stays readable and editable in the config, and so
- * charged, ornamented and degraded variants of an item are covered by its base name.
+ * Names rather than ids, so the list stays readable and editable in the config, and so an item's
+ * charged, ornamented and degraded variants are covered by its base name.
  */
-public final class ProtectedItems
+public final class DefaultProtectedItems
 {
-	public static final String DEFAULT =
+	public static final String NAMES =
 		"Abyssal whip, Adamant crossbow, Ahrim's hood, Ahrim's robeskirt, Ahrim's robetop, " +
 		"Amulet of blood fury, Amulet of fury, Amulet of glory, Amulet of glory (t), " +
 		"Amulet of power, Amulet of rancour, Amulet of strength, Amulet of torture, Ancestral hat, " +
@@ -59,7 +59,7 @@ public final class ProtectedItems
 		"Zamorak bracers, Zamorak cape, Zamorak chaps, Zamorak coif, Zamorak d'hide body, " +
 		"Zamorak d'hide boots, Zamorakian hasta, Zaryte crossbow, Zaryte vambraces, Zombie axe";
 
-	private ProtectedItems()
+	private DefaultProtectedItems()
 	{
 	}
 }
