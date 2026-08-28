@@ -92,6 +92,8 @@ public class CoxGroundItems
 	private final Set<Integer> carriedIn = new HashSet<>();
 	private boolean carriedInCaptured;
 
+	private final Set<String> loggedObjects = new HashSet<>();
+
 	private boolean sceneLoadPending;
 	private boolean wasInRaid;
 
@@ -115,6 +117,7 @@ public class CoxGroundItems
 		inventoryQuantities.clear();
 		carriedIn.clear();
 		carriedInCaptured = false;
+		loggedObjects.clear();
 		sceneLoadPending = false;
 	}
 
@@ -278,15 +281,36 @@ public class CoxGroundItems
 
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
-		if (!config.coxDeprioritizeExit() || !hasItemsLeftBehind())
+		MenuEntry entry = event.getMenuEntry();
+		if (!isObjectAction(entry.getType()))
 		{
 			return;
 		}
 
-		MenuEntry entry = event.getMenuEntry();
-		if (isObjectAction(entry.getType()) && EXIT_OBJECT_IDS.contains(event.getIdentifier()))
+		logObjectOnce(event);
+
+		if (config.coxDeprioritizeExit() && hasItemsLeftBehind() && EXIT_OBJECT_IDS.contains(event.getIdentifier()))
 		{
 			entry.setDeprioritized(true);
+		}
+	}
+
+	/**
+	 * Names every object that can be interacted with inside the raid, once each, so the
+	 * exit identifies itself. The ids the deprioritize matches on are unverified guesses.
+	 * The string is only built with debug logging on, which is off outside a dev client.
+	 */
+	private void logObjectOnce(MenuEntryAdded event)
+	{
+		if (!log.isDebugEnabled() || !isInRaidDungeon())
+		{
+			return;
+		}
+
+		String object = event.getIdentifier() + " " + event.getOption() + " " + event.getTarget();
+		if (loggedObjects.add(object))
+		{
+			log.debug("CoX: object {}", object);
 		}
 	}
 

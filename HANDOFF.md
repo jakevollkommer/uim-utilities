@@ -45,6 +45,19 @@ Xeric" section: `coxWarnGroundItems` (master) and `coxDeprioritizeExit`.
 - The exit's left-click option is deprioritized (never removed) while items remain,
   matching `nex-leech-utility`'s `maybeDeprioritizeDoorEntry`.
 
+**Remove before submitting to the hub:** `logObjectOnce` in `CoxGroundItems` names every
+interactable object in the raid at debug level. It exists only to identify the exit, since
+the ids below are guesses, and should go once they are confirmed.
+
+### Verified in-game 2026-08-27
+
+The raid gate (in-dungeon varbit plus region), the carried-in snapshot, and the drop
+pairing all work: dropping a rune pickaxe logged `counted dropped item 1275`, with the
+floor spawn arriving before the inventory change and the pairing joining them.
+
+The exit ids are still wrong. The deprioritize did not fire on the raid entrance, and no
+label was drawn, because none of the four candidate ids is the object being clicked.
+
 ### Still to verify in-game (a raid is needed, nothing here is confirmed)
 
 1. **Which object is the exit.** All four candidates are deprioritized:
