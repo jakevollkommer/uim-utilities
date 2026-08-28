@@ -187,7 +187,17 @@ public class GroundItemWarning implements Feature
 			return;
 		}
 
-		droppedItems.remove(raidScope.templatePointOf(event.getTile()), event.getItem().getId());
+		Tile tile = event.getTile();
+		boolean wasCounted = droppedItems.remove(raidScope.templatePointOf(tile), event.getItem().getId());
+		if (!wasCounted)
+		{
+			return;
+		}
+
+		// The distance says what happened to it: picked up from under the player's feet, or gone
+		// from a room that is no longer loaded, which would be this plugin losing track of it
+		log.debug("CoX: dropped item {} is gone, {} tiles from the player",
+			event.getItem().getId(), raidScope.distanceFromPlayer(tile));
 		logCount();
 	}
 

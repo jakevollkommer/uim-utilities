@@ -20,19 +20,20 @@ class DroppedItems
 			.merge(itemId, 1, Integer::sum);
 	}
 
-	void remove(WorldPoint tile, int itemId)
+	/** @return true when this was one of the dropped items and is no longer counted. */
+	boolean remove(WorldPoint tile, int itemId)
 	{
 		Map<Integer, Integer> stacks = stacksByTile.get(tile);
 		int held = stacks == null ? 0 : stacks.getOrDefault(itemId, 0);
 		if (held == 0)
 		{
-			return;
+			return false;
 		}
 
 		if (held > 1)
 		{
 			stacks.put(itemId, held - 1);
-			return;
+			return true;
 		}
 
 		stacks.remove(itemId);
@@ -40,6 +41,7 @@ class DroppedItems
 		{
 			stacksByTile.remove(tile);
 		}
+		return true;
 	}
 
 	int count()
