@@ -4,6 +4,7 @@ import com.uimutilities.Feature;
 import com.uimutilities.UimUtilitiesConfig;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -270,10 +271,20 @@ public class GroundItemWarning implements Feature
 	private void findTheExits()
 	{
 		int found = raidExits.scanOnce(client.getTopLevelWorldView().getScene());
-		if (found >= 0)
+		boolean worthLogging = found >= 0 && log.isDebugEnabled();
+		if (worthLogging)
 		{
-			log.debug("CoX: {} exit objects in the scene", found);
+			// The ids say whether these are really ways out: an id that turns up in every room is
+			// one of the guesses matching something else
+			log.debug("CoX: {} exit objects in the scene {}", found, exitObjectIds());
 		}
+	}
+
+	private List<Integer> exitObjectIds()
+	{
+		return exits().stream()
+			.map(TileObject::getId)
+			.collect(Collectors.toList());
 	}
 
 	private void forgetTheRaid()
