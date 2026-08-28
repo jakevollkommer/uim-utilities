@@ -95,6 +95,7 @@ public class CoxGroundItems
 	private final Set<String> loggedObjects = new HashSet<>();
 
 	private boolean sceneLoadPending;
+	private boolean exitsScanned;
 	private boolean wasInRaid;
 
 	// Whether the raid is the loaded scene, refreshed once a tick so that item spawns
@@ -119,6 +120,7 @@ public class CoxGroundItems
 		carriedInCaptured = false;
 		loggedObjects.clear();
 		sceneLoadPending = false;
+		exitsScanned = false;
 	}
 
 	/** Starts tracking from here when the plugin is enabled mid-raid. */
@@ -234,6 +236,7 @@ public class CoxGroundItems
 			pendingDrops.clear();
 			pendingSpawns.clear();
 			sceneLoadPending = true;
+			exitsScanned = false;
 			return;
 		}
 
@@ -247,7 +250,6 @@ public class CoxGroundItems
 	public void onGameTick()
 	{
 		coxSceneLoaded = isCoxSceneLoaded();
-		boolean sceneJustLoaded = sceneLoadPending;
 		sceneLoadPending = false;
 		expirePending();
 
@@ -261,13 +263,7 @@ public class CoxGroundItems
 		if (inRaid)
 		{
 			captureCarriedItemsOnce();
-			if (sceneJustLoaded)
-			{
-				// Objects spawn while the scene is still loading, before the raid is known
-				// to be what loaded, so the exits are read back out of the scene here
-				scanLoadedSceneForExits();
-				log.debug("CoX: {} exit objects in the scene", exitObjects.size());
-			}
+			scanForExitsOnce();
 			return;
 		}
 
@@ -448,6 +444,24 @@ public class CoxGroundItems
 		int oldestAllowed = client.getTickCount() - DROP_TIMEOUT_TICKS;
 		pendingDrops.removeIf(pending -> pending.tick < oldestAllowed);
 		pendingSpawns.removeIf(pending -> pending.tick < oldestAllowed);
+	}
+
+	/**
+	 * Objects spawn while the scene is still loading, before the in-dungeon varbit says
+	 * the raid is what loaded, so their spawns are missed and the exits are read back out
+	 * of the scene instead. It waits for a tick inside the raid rather than the tick after
+	 * the load, which can land before the varbit flips.
+	 */
+	private void scanForExitsOnce()
+	{
+		if (exitsScanned)
+		{
+			return;
+		}
+
+		scanLoadedSceneForExits();
+		exitsScanned = true;
+		log.debug("CoX: {} exit objects in the scene", exitObjects.size());
 	}
 
 	private void scanLoadedSceneForExits()
