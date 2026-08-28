@@ -69,6 +69,12 @@ check that first. And the dev client sideloads the deployed jar on top of the co
 builds, so the plugin appears twice and both copies share one config key, which is the likely way
 it got disabled.
 
+**Open question: the lobby counts as the dungeon.** The bank chest at Xeric's lookout (object
+47420) was logged as an in-raid object, so the in-dungeon varbit plus region test is true outside
+the raid proper. Items dropped in the lobby are not destroyed, so they should not count. Check
+whether region 12889 is the lobby and whether `RAIDS_CLIENT_INDUNGEON` is really 1 there, then
+tighten the gate.
+
 ### Still to verify in-game (a raid is needed, nothing here is confirmed)
 
 1. **Which object is each exit.** 49999 (`RAIDS_EXIT_STEPS_MULTI`) is confirmed: it is the Climb

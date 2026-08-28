@@ -36,6 +36,10 @@ import net.runelite.client.ui.overlay.Overlay;
 @Singleton
 public class GroundItemWarning implements Feature
 {
+	// The raid gate can read false for a tick as the scene changes around the entrance, and tearing
+	// the count down on that blip would drop a live warning while the items are still on the floor
+	private static final int TICKS_OUTSIDE_BEFORE_FORGETTING = 5;
+
 	private final Client client;
 	private final UimUtilitiesConfig config;
 	private final RaidScope raidScope;
@@ -50,6 +54,7 @@ public class GroundItemWarning implements Feature
 	// spawning again, so item events say nothing about drops until the load settles
 	private boolean sceneLoading;
 	private boolean wasInRaid;
+	private int ticksOutsideTheRaid;
 
 	@Inject
 	public GroundItemWarning(Client client, UimUtilitiesConfig config)
@@ -98,12 +103,15 @@ public class GroundItemWarning implements Feature
 
 		if (raidScope.isInRaidDungeon())
 		{
+			ticksOutsideTheRaid = 0;
 			captureWhatCanBeLeftBehind();
 			findTheExits();
 			return;
 		}
 
-		if (!droppedItems.isEmpty() || !exits().isEmpty() || carriedItems.areKnown())
+		ticksOutsideTheRaid++;
+		boolean holdsRaidState = !droppedItems.isEmpty() || !exits().isEmpty() || carriedItems.areKnown();
+		if (holdsRaidState && ticksOutsideTheRaid >= TICKS_OUTSIDE_BEFORE_FORGETTING)
 		{
 			forgetTheRaid();
 		}
@@ -276,6 +284,7 @@ public class GroundItemWarning implements Feature
 		dropWatcher.clear();
 		raidExits.sceneUnloaded();
 		sceneLoading = false;
+		ticksOutsideTheRaid = 0;
 	}
 
 	private void logRaidTransitions()
