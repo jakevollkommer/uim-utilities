@@ -247,6 +247,7 @@ public class CoxGroundItems
 	public void onGameTick()
 	{
 		coxSceneLoaded = isCoxSceneLoaded();
+		boolean sceneJustLoaded = sceneLoadPending;
 		sceneLoadPending = false;
 		expirePending();
 
@@ -260,6 +261,13 @@ public class CoxGroundItems
 		if (inRaid)
 		{
 			captureCarriedItemsOnce();
+			if (sceneJustLoaded)
+			{
+				// Objects spawn while the scene is still loading, before the raid is known
+				// to be what loaded, so the exits are read back out of the scene here
+				scanLoadedSceneForExits();
+				log.debug("CoX: {} exit objects in the scene", exitObjects.size());
+			}
 			return;
 		}
 
@@ -492,6 +500,7 @@ public class CoxGroundItems
 		itemsByTile
 			.computeIfAbsent(tile, point -> new HashMap<>())
 			.merge(itemId, 1, Integer::sum);
+		logCount();
 	}
 
 	private void forget(WorldPoint tile, int itemId)
@@ -502,10 +511,16 @@ public class CoxGroundItems
 			return;
 		}
 
-		int remaining = stacks.getOrDefault(itemId, 0) - 1;
-		if (remaining > 0)
+		int held = stacks.getOrDefault(itemId, 0);
+		if (held == 0)
 		{
-			stacks.put(itemId, remaining);
+			return;
+		}
+
+		if (held > 1)
+		{
+			stacks.put(itemId, held - 1);
+			logCount();
 			return;
 		}
 
@@ -513,6 +528,15 @@ public class CoxGroundItems
 		if (stacks.isEmpty())
 		{
 			itemsByTile.remove(tile);
+		}
+		logCount();
+	}
+
+	private void logCount()
+	{
+		if (log.isDebugEnabled())
+		{
+			log.debug("CoX: {} items left behind", getGroundItemCount());
 		}
 	}
 
