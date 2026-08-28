@@ -69,6 +69,13 @@ check that first. And the dev client sideloads the deployed jar on top of the co
 builds, so the plugin appears twice and both copies share one config key, which is the likely way
 it got disabled.
 
+**The in-dungeon varbit blips to zero on every scene load.** Confirmed in the log: after each room
+change the carried-in snapshot was captured again a tick later, which only happens after a
+teardown, and no gate transition was logged. Treating `RAIDS_CLIENT_INDUNGEON == 0` as leaving the
+raid therefore wiped every counted drop on every room change. Teardown now lives in one place, the
+tick loop, and needs the gate to stay shut for five ticks. Do not re-add a varbit handler that
+forgets the raid.
+
 **Open question: the lobby counts as the dungeon.** The bank chest at Xeric's lookout (object
 47420) was logged as an in-raid object, so the in-dungeon varbit plus region test is true outside
 the raid proper. Items dropped in the lobby are not destroyed, so they should not count. Check

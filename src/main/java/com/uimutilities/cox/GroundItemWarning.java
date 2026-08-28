@@ -22,9 +22,7 @@ import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.ItemDespawned;
 import net.runelite.api.events.ItemSpawned;
 import net.runelite.api.events.MenuEntryAdded;
-import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.InventoryID;
-import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.ui.overlay.Overlay;
 
 /**
@@ -37,8 +35,10 @@ import net.runelite.client.ui.overlay.Overlay;
 @Singleton
 public class GroundItemWarning implements Feature
 {
-	// The raid gate can read false for a tick as the scene changes around the entrance, and tearing
-	// the count down on that blip would drop a live warning while the items are still on the floor
+	// The in-dungeon varbit reads zero for a moment on every scene load, so the raid looks left and
+	// re-entered on every room change. Tearing the count down on that would drop a live warning
+	// while the items are still on the floor, so the raid is only forgotten once the gate has
+	// stayed shut for a few ticks. That, rather than the varbit event, is the one place it happens.
 	private static final int TICKS_OUTSIDE_BEFORE_FORGETTING = 5;
 
 	private final Client client;
@@ -132,16 +132,6 @@ public class GroundItemWarning implements Feature
 
 		boolean leftTheGame = state == GameState.LOGIN_SCREEN || state == GameState.HOPPING;
 		if (leftTheGame)
-		{
-			forgetTheRaid();
-		}
-	}
-
-	@Override
-	public void onVarbitChanged(VarbitChanged event)
-	{
-		boolean leftTheDungeon = event.getVarbitId() == VarbitID.RAIDS_CLIENT_INDUNGEON && event.getValue() == 0;
-		if (leftTheDungeon)
 		{
 			forgetTheRaid();
 		}
