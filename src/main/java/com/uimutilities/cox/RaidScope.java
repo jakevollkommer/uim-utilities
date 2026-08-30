@@ -1,49 +1,32 @@
 package com.uimutilities.cox;
 
-import java.util.Set;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.Tile;
-import net.runelite.api.WorldView;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.VarbitID;
 
 /**
- * Where and when the raid counts. Object and item ids repeat across unrelated content, so every
- * decision in this package is gated on both the in-dungeon varbit and one of the raid's own regions
- * being the loaded scene.
+ * Where and when the raid counts.
+ *
+ * Object and item ids repeat across unrelated content and must never be matched globally, so
+ * everything in this package is gated on RAIDS_CLIENT_INDUNGEON. The varbit belongs to the Chambers
+ * of Xeric alone, which scopes the ids more tightly than a list of the raid's regions would: the
+ * raid is laid out across more regions than any hardcoded list is likely to hold, and a room in a
+ * region missing from it would turn the whole feature off without a word.
  */
 class RaidScope
 {
-	private static final Set<Integer> RAID_REGIONS = Set.of(
-		12889, 13136, 13137, 13138, 13139, 13140, 13141, 13145,
-		13393, 13394, 13395, 13396, 13397, 13401
-	);
-
 	private final Client client;
-
-	// Refreshed once a tick rather than read live: item spawns fire all over the game, and each
-	// one paying for a region scan is work for nothing
-	private boolean raidSceneLoaded;
 
 	RaidScope(Client client)
 	{
 		this.client = client;
 	}
 
-	void refresh()
-	{
-		raidSceneLoaded = scanForRaidRegion();
-	}
-
 	boolean isInRaidDungeon()
 	{
-		return raidSceneLoaded && client.getVarbitValue(VarbitID.RAIDS_CLIENT_INDUNGEON) == 1;
-	}
-
-	boolean isRaidSceneLoaded()
-	{
-		return raidSceneLoaded;
+		return client.getVarbitValue(VarbitID.RAIDS_CLIENT_INDUNGEON) == 1;
 	}
 
 	/**
@@ -61,24 +44,5 @@ class RaidScope
 		Player player = client.getLocalPlayer();
 		WorldPoint playerAt = player == null ? null : player.getWorldLocation();
 		return playerAt == null ? Integer.MAX_VALUE : playerAt.distanceTo(tile.getWorldLocation());
-	}
-
-	private boolean scanForRaidRegion()
-	{
-		WorldView worldView = client.getTopLevelWorldView();
-		int[] regions = worldView == null ? null : worldView.getMapRegions();
-		if (regions == null)
-		{
-			return false;
-		}
-
-		for (int region : regions)
-		{
-			if (RAID_REGIONS.contains(region))
-			{
-				return true;
-			}
-		}
-		return false;
 	}
 }

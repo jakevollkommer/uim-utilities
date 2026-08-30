@@ -14,18 +14,20 @@ import net.runelite.api.gameval.ObjectID;
 
 /**
  * The ways out of the raid: the objects the exit label is drawn on, and the ids the deprioritize
- * matches. The exit steps out of the first room are confirmed as 49999; the rest are candidates from
- * the gameval constants and are still to be seen in a raid.
+ * matches. Only RAIDS_EXIT_STEPS_MULTI has been seen in a raid, as the steps out of the first room;
+ * the rest are candidates from the gameval constants and are still to be confirmed.
  */
 class RaidExits
 {
-	// RAIDS_EXIT_STEPS_MULTI and RAIDS_EXIT_STEPS_RELOAD live in the package-private ObjectID1, so
-	// they are written as raw ids
+	// gameval's ObjectID1 is package-private, so the two ids it holds are named here instead
+	private static final int RAIDS_EXIT_STEPS_MULTI = 49999;
+	private static final int RAIDS_EXIT_STEPS_RELOAD = 50000;
+
 	private static final Set<Integer> EXIT_OBJECT_IDS = Set.of(
-		49999, // RAIDS_EXIT_STEPS_MULTI, the steps out of the first room
-		50000, // RAIDS_EXIT_STEPS_RELOAD
-		ObjectID.RAIDS_BOSSEXIT, // 29996
-		ObjectID.RAIDS_EXIT_STEPS // 29778
+		RAIDS_EXIT_STEPS_MULTI,
+		RAIDS_EXIT_STEPS_RELOAD,
+		ObjectID.RAIDS_BOSSEXIT,
+		ObjectID.RAIDS_EXIT_STEPS
 	);
 
 	private final List<TileObject> exits = new ArrayList<>();
@@ -48,7 +50,7 @@ class RaidExits
 		return exits;
 	}
 
-	/** The exit out of the Olm chamber only appears once the fight is over. */
+	/** Catches an exit that appears mid-raid, such as the one out of the Olm chamber. */
 	void objectSpawned(GameObject object)
 	{
 		remember(object);

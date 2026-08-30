@@ -97,7 +97,6 @@ public class GroundItemWarning implements Feature
 	@Override
 	public void onGameTick()
 	{
-		raidScope.refresh();
 		sceneLoading = false;
 		dropWatcher.expire(client.getTickCount());
 		logRaidTransitions();
@@ -194,7 +193,7 @@ public class GroundItemWarning implements Feature
 	@Override
 	public void onGameObjectSpawned(GameObjectSpawned event)
 	{
-		if (raidScope.isRaidSceneLoaded())
+		if (raidScope.isInRaidDungeon())
 		{
 			raidExits.objectSpawned(event.getGameObject());
 		}

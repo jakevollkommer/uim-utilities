@@ -76,11 +76,14 @@ raid therefore wiped every counted drop on every room change. Teardown now lives
 tick loop, and needs the gate to stay shut for five ticks. Do not re-add a varbit handler that
 forgets the raid.
 
-**Open question: the lobby counts as the dungeon.** The bank chest at Xeric's lookout (object
-47420) was logged as an in-raid object, so the in-dungeon varbit plus region test is true outside
-the raid proper. Items dropped in the lobby are not destroyed, so they should not count. Check
-whether region 12889 is the lobby and whether `RAIDS_CLIENT_INDUNGEON` is really 1 there, then
-tighten the gate.
+**The region list is gone; the gate is the varbit alone.** Trevor's raid-reloader
+(github.com/Trevor159/runelite-external-plugins, raid-reloader branch) tests only
+`Varbits.IN_RAID`, which is `RAIDS_CLIENT_INDUNGEON`, and tracks the lobby separately as region
+4919. That is the better gate here: the varbit belongs to CoX alone, so ids cannot leak, while an
+incomplete region list turns the feature off in any room whose region was missed, silently. The
+list that was here came from deathbank-utility's safe-death regions and had no claim to being
+complete. A bank chest (object 47420) was once logged as in-raid, which is worth understanding, but
+region 4919 was never in the list, so the lobby was not what made the gate true.
 
 ### Still to verify in-game (a raid is needed, nothing here is confirmed)
 

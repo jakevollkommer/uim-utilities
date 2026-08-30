@@ -20,8 +20,8 @@ public class LootingBagProtection implements Feature
 	private static final String DESTROY = "Destroy";
 
 	private static final Set<Integer> LOOTING_BAG_IDS = Set.of(
-		ItemID.LOOTING_BAG, // 11941
-		ItemID.LOOTING_BAG_OPEN // 22586
+		ItemID.LOOTING_BAG,
+		ItemID.LOOTING_BAG_OPEN
 	);
 
 	private final Client client;
