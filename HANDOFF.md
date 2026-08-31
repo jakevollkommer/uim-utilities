@@ -158,12 +158,13 @@ menu entry's target text, so no item composition lookups on the menu path.
 game state, but a reviewer may still read it against the rejected-features wiki's
 "conditional menu entry removing" line. Deprioritizing the Sell entries is the fallback.
 
-**Still to verify in-game.** That the shop inventory's Sell options carry the item name in
-the target text and an item id (that is what the matching reads), that `Value` and
-`Examine` survive, that the left-click sell is gone as well as the right-click ones, and
-that editing the list applies without a relog. Also worth a pass on how many of the 233
-names actually match in-game names: they come from wiki infobox names, and any that are
-wrong simply fail to protect, silently.
+**Confirmed in-game by Jake, 2026-08-31.** Every `Sell 1/5/10/50` was removed for a Bandos
+chestplate, a Neitiznot faceguard and Oathplate legs, with the item name read from the menu
+target. The options arrive as `Sell 50<col=ff9040>` with a colour tag appended, so the `Sell`
+prefix match holds; a tag on the front would break it silently.
+
+**Still worth a pass:** how many of the 233 names match their in-game names. They come from wiki
+infobox names, and any that are wrong fail to protect without saying so.
 
 ## Later feature candidates (not designed yet)
 
