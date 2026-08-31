@@ -214,8 +214,6 @@ public class GroundItemWarning implements Feature
 			return;
 		}
 
-		logObject(event);
-
 		boolean shouldMakeLeavingDeliberate = config.coxDeprioritizeExit()
 			&& hasItemsLeftBehind()
 			&& raidExits.isExit(event.getIdentifier());
@@ -304,20 +302,6 @@ public class GroundItemWarning implements Feature
 		{
 			wasInRaid = inRaid;
 			log.debug("CoX: {} the raid dungeon", inRaid ? "entered" : "left");
-		}
-	}
-
-	private void logObject(MenuEntryAdded event)
-	{
-		if (!log.isDebugEnabled() || !raidScope.isInRaidDungeon())
-		{
-			return;
-		}
-
-		String object = raidExits.describeOnce(event);
-		if (object != null)
-		{
-			log.debug("CoX: object {}", object);
 		}
 	}
 

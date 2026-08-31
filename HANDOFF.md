@@ -48,9 +48,9 @@ scene scan, and `ExitLabelOverlay` draws the label. Config lives in a "Chambers 
 - The exit's left-click option is deprioritized (never removed) while items remain,
   matching `nex-leech-utility`'s `maybeDeprioritizeDoorEntry`.
 
-**Remove before submitting to the hub:** `RaidExits.describeOnce` names every interactable object
-in the raid at debug level. It exists only to identify the exits that are still guesses, and should
-go once they are confirmed, along with the ids that never appear.
+**The object naming diagnostic is gone**, removed before the hub submission. If another exit needs
+identifying, log `event.getIdentifier()`, the option and the target from `onMenuEntryAdded` behind
+`log.isDebugEnabled()`, in a dev client, and take it out again afterwards.
 
 ### Verified in-game 2026-08-27
 

@@ -1,7 +1,6 @@
 package com.uimutilities.cox;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import net.runelite.api.GameObject;
@@ -9,7 +8,6 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.Scene;
 import net.runelite.api.Tile;
 import net.runelite.api.TileObject;
-import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.gameval.ObjectID;
 
 /**
@@ -36,10 +34,6 @@ class RaidExits
 	// what loaded, so those spawns are missed and the scene is read back for exits instead
 	private boolean scanned;
 
-	// Every object seen in the raid, once each, so the exits that are still guesses can name
-	// themselves in a dev client. Goes once the ids are confirmed.
-	private final Set<String> loggedObjects = new HashSet<>();
-
 	boolean isExit(int objectId)
 	{
 		return EXIT_OBJECT_IDS.contains(objectId);
@@ -64,7 +58,6 @@ class RaidExits
 	void sceneUnloaded()
 	{
 		exits.clear();
-		loggedObjects.clear();
 		scanned = false;
 	}
 
@@ -88,13 +81,6 @@ class RaidExits
 			}
 		}
 		return exits.size();
-	}
-
-	/** @return an object worth naming in the log, or null when it has been named already. */
-	String describeOnce(MenuEntryAdded event)
-	{
-		String object = event.getIdentifier() + " " + event.getOption() + " " + event.getTarget();
-		return loggedObjects.add(object) ? object : null;
 	}
 
 	static boolean isObjectAction(MenuAction action)
