@@ -1,8 +1,8 @@
 # UIM Utilities — handoff
 
 Scaffolded from `~/projects/osrs/runelite-plugin-template` on 2026-08-27. Builds
-clean (`./gradlew jar`), plugin loads, nothing implemented yet beyond the Feedback
-section. No GitHub remote yet.
+clean (`./gradlew jar`) and the plugin loads. No GitHub remote yet, so feature branches
+have nowhere to open a PR into main until one exists.
 
 The plugin is a home for many ultimate-ironman quality-of-life features. Feature 1
 is below; keep each feature in its own package/class so the plugin does not become
@@ -10,98 +10,161 @@ one god class (see `~/projects/osrs/minimalist` for how content areas are split)
 
 ## Feature 1 — warn before leaving items behind in Chambers of Xeric
 
+**Status: implemented, not yet verified in-game.** Branch `cox-ground-item-warning`.
+
 **The problem.** UIMs use the floor as storage inside CoX, commonly dropping items
 before the Olm final phase. The raid instance is destroyed on exit, so anything
 still on the ground is gone forever. People do leave without picking it up.
 
-**The behavior to build.**
-1. Track ground items inside the raid that belong to the player.
-2. While any remain, **deprioritize** the raid exit's left-click option so a
-   careless click cannot leave, forcing a deliberate right-click.
-3. Draw an overlay on/near the exit reading something like
-   `You left items on the ground` with the count.
+### What was built
 
-**Do not remove or hide the menu entry.** The hub explicitly rejects
-"conditional menu entry removing" as overpowered
-(https://github.com/runelite/runelite/wiki/Rejected-or-Rolled-Back-Features).
-Deprioritizing is accepted and is already shipping in Jake's `nex-leech-utility`
-(hub PR #15167, merged), so copy that pattern exactly.
+`com.uimutilities.cox` owns the feature. `GroundItemWarning` is the coordinator and the only
+public type in it; `RaidScope` answers where and when the raid counts, `CarriedItems` holds what
+was brought in, `InventoryLedger` names what left the inventory, `DropWatcher` pairs that with what
+landed on the floor, `DroppedItems` keeps the count per tile, `RaidExits` owns the exit ids and the
+scene scan, and `ExitLabelOverlay` draws the label. Config lives in a "Chambers of Xeric" section:
+`coxWarnGroundItems` (master) and `coxDeprioritizeExit`.
 
-### The deprioritize pattern (proven, hub-approved)
+- Only items the player carried in and then dropped are counted. A drop click arms a
+  pending drop (item id plus tick), and the next self-owned `ItemSpawned` of that id
+  within 3 ticks and 2 tiles of the player claims it. Everything else on the floor is
+  ignored, which is the fix for the first in-game run: a raid is full of the player's own
+  ground items that were never carried in, mostly loot from what was killed on the way,
+  and the count read 16 in a raid where nothing had been dropped.
+- What counts as carried in is the inventory plus worn items, snapshotted when the
+  in-dungeon varbit goes to 1. An empty snapshot means it was never captured, and then
+  every drop counts rather than none: a missed warning is what loses the items.
+- Everything is gated on `VarbitID.RAIDS_CLIENT_INDUNGEON == 1` plus a loaded CoX region.
+- Tiles are keyed by their **instance template point**
+  (`WorldPoint.fromLocalInstance`), not by instance world coordinates: the instance
+  chunk mapping is rebuilt on every scene load, so raw world points would not match
+  the same physical tile between rooms.
+- Drops are remembered across the scene reloads between rooms. Spawns and despawns during
+  a load are ignored, since a load re-reports everything the new scene covers and reports
+  nothing for the rooms that dropped out of it; a reload cannot double count and cannot
+  wipe the rooms left behind.
+- Enabling the plugin mid-raid starts the count at zero. Items already on the floor cannot
+  be told apart from raid loot, so tracking follows what is dropped from then on.
+- The exit's left-click option is deprioritized (never removed) while items remain,
+  matching `nex-leech-utility`'s `maybeDeprioritizeDoorEntry`.
 
-`~/projects/osrs/nex-leech-utility/src/main/java/com/nexleechutility/NexLeechUtilityPlugin.java`,
-`maybeDeprioritizeDoorEntry` around line 820:
+**The object naming diagnostic is gone**, removed before the hub submission. If another exit needs
+identifying, log `event.getIdentifier()`, the option and the target from `onMenuEntryAdded` behind
+`log.isDebugEnabled()`, in a dev client, and take it out again afterwards.
 
-```java
-@Subscribe
-public void onMenuEntryAdded(MenuEntryAdded event)
-{
-    MenuEntry entry = event.getMenuEntry();
-    if (isObjectAction(entry.getType()) && EXIT_OBJECT_IDS.contains(event.getIdentifier()))
-    {
-        entry.setDeprioritized(true);
-    }
-}
-```
+### Verified in-game 2026-08-27
 
-`isObjectAction` switches over `GAME_OBJECT_FIRST_OPTION` … `FIFTH_OPTION`
-(same file, ~line 834). Note it matches on `event.getIdentifier()` for the
-object id, and gates on a config toggle first.
+The raid gate (in-dungeon varbit plus region), the carried-in snapshot, the drop pairing, the
+pickup clearing the count, the exit scan and the label all work. Dropping a rune pickaxe logged
+`counted dropped item 1275` with the floor spawn arriving first and the inventory change joining
+it, picking it up took the count back to 0, and the label drew on the steps.
 
-### Identifying the player's own ground items — use the client API, not a heuristic
+The deprioritize could not be judged: the steps are menu swapped in Jake's client, and a swap sets
+the left-click after the deprioritize is applied. Worth knowing generally, since it means the
+overlay is the real protection for anyone who swaps their exit.
 
-`net.runelite.api.TileItem` exposes ownership directly:
+Two things cost a session each before that. The plugin was disabled in the profile
+(`runelite.uimutilitiesplugin=false`), which looks identical to a broken feature from the outside;
+check that first. And the dev client sideloads the deployed jar on top of the copy `runPlugin`
+builds, so the plugin appears twice and both copies share one config key, which is the likely way
+it got disabled.
 
-```java
-int OWNERSHIP_NONE = 0;
-int OWNERSHIP_SELF = 1;   // <- what we want
-int OWNERSHIP_OTHER = 2;
-int OWNERSHIP_GROUP = 3;
-int getOwnership();
-```
+**The in-dungeon varbit blips to zero on every scene load.** Confirmed in the log: after each room
+change the carried-in snapshot was captured again a tick later, which only happens after a
+teardown, and no gate transition was logged. Treating `RAIDS_CLIENT_INDUNGEON == 0` as leaving the
+raid therefore wiped every counted drop on every room change. Teardown now lives in one place, the
+tick loop, and needs the gate to stay shut for five ticks. Do not re-add a varbit handler that
+forgets the raid.
 
-So subscribe to `ItemSpawned` / `ItemDespawned` and keep a count of tiles holding
-items where `getOwnership() == TileItem.OWNERSHIP_SELF`, scoped to the raid.
-RuneLite's own Ground Items plugin uses this (`GroundItemsPlugin.java:275`) — read
-it for the idiomatic handling. This avoids the guesswork of trying to infer
-ownership from drop events, and correctly ignores teammates' items and raid drops.
+**The region list is gone; the gate is the varbit alone.** Trevor's raid-reloader
+(github.com/Trevor159/runelite-external-plugins, raid-reloader branch) tests only
+`Varbits.IN_RAID`, which is `RAIDS_CLIENT_INDUNGEON`, and tracks the lobby separately as region
+4919. That is the better gate here: the varbit belongs to CoX alone, so ids cannot leak, while an
+incomplete region list turns the feature off in any room whose region was missed, silently. The
+list that was here came from deathbank-utility's safe-death regions and had no claim to being
+complete. A bank chest (object 47420) was once logged as in-raid, which is worth understanding, but
+region 4919 was never in the list, so the lobby was not what made the gate true.
 
-Open question worth deciding early: whether to count *only* deliberately dropped
-items or any self-owned ground item in the instance. Start with all self-owned
-(simplest, honest) and refine if it produces noise.
+### Still to verify in-game (a raid is needed, nothing here is confirmed)
 
-### Exit object candidates (VERIFY IN-GAME)
-
-From `runelite-api` gameval `ObjectID`:
-
-| Constant | ID | Note |
-|---|---|---|
-| `RAIDS_BOSSEXIT` | 29996 | most likely the post-Olm exit |
-| `RAIDS_EXIT_STEPS` | 29778 | |
-| `RAIDS_EXIT_STEPS_MULTI` | 49999 | in package-private `ObjectID1`, use the raw int |
-| `RAIDS_EXIT_STEPS_RELOAD` | 50000 | in package-private `ObjectID1`, use the raw int |
-
-`ObjectID1` is package-private, so constants from it must be written as raw ints
-with a comment naming them (deathbank-utility does this for its chest ids).
-
-**First task: confirm which object is actually used** — dev client, CoX, kill Olm
-(or use a scouted/practice raid), and inspect the exit with the object inspector.
-Also check whether the exit is a game object at all vs a widget button; the user
-described it as "the leave raid button or whatever", so both are possible. If it
-is a widget, the deprioritize approach does not apply and the design changes to a
-confirm overlay — settle this before writing code.
-
-Also confirm: does the raid have more than one exit (Olm room vs lobby vs
-"Leave party")? Only the item-destroying one should be gated.
+1. **Which object is each exit.** 49999 (`RAIDS_EXIT_STEPS_MULTI`) is confirmed: it is the Climb
+   steps out of the first room, and it also carries a Reload option. Still unconfirmed are
+   `RAIDS_BOSSEXIT` 29996, `RAIDS_EXIT_STEPS` 29778 and 50000 (`RAIDS_EXIT_STEPS_RELOAD`); the
+   post-Olm exit in particular has not been seen. Trim the set to what appears. The cache dumper in
+   `~/projects/osrs/runelite` could not vet these: its `:cache` build no longer parses the live
+   cache (`ObjectLoader.processOp` throws on an unknown opcode).
+2. **That the exit is a game object at all**, not a widget button. If it is a widget,
+   the deprioritize half of the feature does not apply and the design becomes a
+   confirm overlay.
+3. **That the exit is a `GameObject`** specifically. The overlay anchors on
+   `GameObjectSpawned`; if the exit turns out to be a ground/decorative/wall object,
+   add that spawn event too.
+4. **Ownership inside the raid.** Confirm dropped items report `OWNERSHIP_SELF` in
+   an instance, and that teammates' drops and raid loot do not.
+5. **Scene reload behavior.** Confirm the raid reloads the scene between rooms at
+   all, and that the remembered-tile reconcile survives a walk out and back.
 
 ### Scope guard
 
-Warn only inside CoX for now. Region-gate everything so the menu entry
-manipulation cannot leak elsewhere — `~/projects/osrs/CLAUDE.md` documents that
-object/NPC ids are reused across unrelated content, and deathbank-utility's
-`SAFE_DEATH_REGIONS`/CoX region list is a ready source of the CoX region ids
-(`12889, 13136, 13137, 13138, 13139, 13140, 13141, 13145, 13393, 13394, 13395,
-13396, 13397, 13401`).
+Everything is gated on the in-dungeon varbit plus the CoX region list
+(`12889, 13136-13141, 13145, 13393-13397, 13401`), because object ids are reused
+across unrelated content.
+
+## Feature 2 — take Destroy off the looting bag
+
+**Status: implemented, not yet verified in-game.** Branch `looting-bag-destroy`, stacked
+on `cox-ground-item-warning`.
+
+Destroying a looting bag outside the Wilderness loses everything inside it. While
+`hideLootingBagDestroy` is on (default), the Destroy entry is removed from the bag's
+menu, in `com.uimutilities.lootingbag.LootingBagProtection`. Matching is
+`event.getItemId()` in `{LOOTING_BAG 11941, LOOTING_BAG_OPEN 22586}` plus the option
+text `Destroy`, and removal is `client.getMenu().removeMenuEntry(...)`.
+
+**Hub risk, decide before submitting.** The rejected-features wiki lists "conditional
+menu entry removing" as overpowered, with the example of hiding attack options based on
+game state. This removal is unconditional while the setting is on and only touches a
+destructive inventory option, so it is a different thing, but it is still entry removal
+and a reviewer may read it the other way. The fallback that is certainly accepted is
+deprioritizing Destroy instead, the same treatment feature 1 gives the raid exit.
+
+**Still to verify in-game.** That the entry is actually gone from both the closed and
+open bag, in the inventory and anywhere else the bag shows a Destroy option, and that
+turning the setting off restores it without a relog. The bank placeholder ids (18274,
+22587) are not matched: confirm placeholders show Release rather than Destroy.
+
+## Feature 3 — no selling protected items to shops
+
+**Status: implemented, not yet verified in-game.** Branch `shop-sell-protection`, stacked
+on `looting-bag-destroy`.
+
+A general store will buy a twisted bow, and it is gone the moment the shop closes. While
+`blockSelling` is on (default), every `Sell` entry is removed from items matching the
+`protectedItems` list, in `com.uimutilities.shops.SellProtection`. Matching runs on the
+menu entry's target text, so no item composition lookups on the menu path.
+
+- Entries are item names, comma separated, `*` wildcards allowed, the same shape as the
+  Ground Items lists. Parsing is `Text.fromCSV`, wildcards are `WildcardMatcher`, exact
+  names answer from a lowercased set so only wildcard entries are walked.
+- A plain name also covers that item's variants: a trailing bracket for charges and
+  ornaments (`Trident of the seas (full)`, `Dragon dagger(p++)`) and a trailing number for
+  degraded barrows pieces (`Ahrim's robetop 75`). Verified offline against both.
+- The default list is the 233 items linked from the ultimate ironman guide's equipment
+  page, in `ProtectedItems.DEFAULT`. It was generated from the page's wikitext through the
+  wiki API: every `{{plink}}` target, resolved through redirects, with the aggregate pages
+  (the blessed dragonhide slots, god blessings, god capes) expanded to their real item
+  names, and `Damaged book (Ancient)` corrected to the in-game `Damaged book`.
+
+**Hub risk, same as feature 2.** This is menu entry removal driven by a user list, not a
+game state, but a reviewer may still read it against the rejected-features wiki's
+"conditional menu entry removing" line. Deprioritizing the Sell entries is the fallback.
+
+**Still to verify in-game.** That the shop inventory's Sell options carry the item name in
+the target text and an item id (that is what the matching reads), that `Value` and
+`Examine` survive, that the left-click sell is gone as well as the right-click ones, and
+that editing the list applies without a relog. Also worth a pass on how many of the 233
+names actually match in-game names: they come from wiki infobox names, and any that are
+wrong simply fail to protect, silently.
 
 ## Later feature candidates (not designed yet)
 

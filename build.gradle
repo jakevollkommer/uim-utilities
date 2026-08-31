@@ -44,7 +44,7 @@ tasks.register('runPlugin', JavaExec) {
 		'--add-opens=java.desktop/com.apple.eawt=ALL-UNNAMED',
 		'--add-opens=java.desktop/sun.awt=ALL-UNNAMED'
 	]
-	args = ['--developer-mode']
+	args = ['--developer-mode', '--debug']
 }
 
 tasks.register('deploy', Copy) {
