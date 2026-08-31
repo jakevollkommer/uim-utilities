@@ -128,10 +128,9 @@ destructive inventory option, so it is a different thing, but it is still entry 
 and a reviewer may read it the other way. The fallback that is certainly accepted is
 deprioritizing Destroy instead, the same treatment feature 1 gives the raid exit.
 
-**Still to verify in-game.** That the entry is actually gone from both the closed and
-open bag, in the inventory and anywhere else the bag shows a Destroy option, and that
-turning the setting off restores it without a relog. The bank placeholder ids (18274,
-22587) are not matched: confirm placeholders show Release rather than Destroy.
+**Confirmed in-game by Jake, 2026-08-31.** The Destroy option is gone from the looting bag. Still
+unchecked: the bank placeholder ids (18274, 22587), which are not matched on the assumption that
+placeholders show Release rather than Destroy.
 
 ## Feature 3 — no selling protected items to shops
 
