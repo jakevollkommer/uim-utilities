@@ -123,7 +123,7 @@ public interface UimUtilitiesConfig extends Config
 
 	@ConfigSection(
 		name = "Feedback",
-		description = "Suggestions, bug reports, and support",
+		description = "Early release: not feature complete, and a missing warning is not proof your floor is clear. Bug reports and feature requests are very welcome",
 		position = 99
 	)
 	String feedbackSection = "feedbackSection";

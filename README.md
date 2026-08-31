@@ -25,6 +25,16 @@ from the [ultimate ironman equipment guide](https://oldschool.runescape.wiki/w/U
 Entries are item names with `*` wildcards, and a plain name also covers that item's
 charged, ornamented and degraded variants.
 
+## Early release
+
+This plugin is an early release and not feature complete. The Chambers of Xeric warning counts what
+it saw leave your inventory and land on the floor, so a missing warning is not proof the floor is
+clear: check the ground yourself before you leave, especially on an ultimate ironman. Not every way
+out of the raid is recognised yet either, so the label and the deprioritized left-click may not
+appear on the one you use. Bug reports and feature requests are very welcome on the
+[issues page](https://github.com/jakevollkommer/uim-utilities/issues), also reachable from the
+plugin config's Feedback section.
+
 ## Development
 
 ```
