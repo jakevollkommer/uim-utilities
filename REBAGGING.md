@@ -18,15 +18,14 @@ the items arrive in an order you chose: potions first, then magic gear, then mel
   to everyone immediately, so the sorting has to be fast rather than merely convenient.
 - Deathpiling is the alternative, and produces the same problem: a pile in arbitrary order.
 
-**This collides with the looting bag feature already in the plugin**, which removes Destroy from the
-bag. Rebagging is the one time destroying it is deliberate. Options, in preference order:
+**Settled 2026-09-09.** The looting bag setting is now Allow, Remove, or Allow in the Wilderness,
+defaulting to the last, which is the shape lootbag-utilities already ships on the hub. Rebagging is
+the one deliberate use of Destroy, and it only happens in the Wilderness.
 
-1. Remove Destroy only outside the Wilderness, where it deletes items, and leave it in the
-   Wilderness, where it is the intended move. The rule matches the game's own behaviour.
-2. Keep the removal unconditional and let the player toggle the setting off to rebag.
-
-Option 1 is better protection and better ergonomics, but it is conditional removal, which the hub's
-rejected-features page is wary of. Worth deciding before either feature is submitted again.
+Context worth keeping: an ultimate ironman deathpiles to empty the bag almost every time. Destroying
+it is for when a deathbank is active and deathpiling is not possible, so they accept a few seconds
+of Wilderness risk. A deathpile produces the same unordered heap, so the sort should not be tied to
+bag destruction alone.
 
 ## How the menu can be reordered
 
@@ -45,14 +44,16 @@ The mechanism is settled, and there is precedent in both core RuneLite and a hub
 
 Sorting is a swap, not a removal, so it sits on the accepted side of the hub's menu rules.
 
-## Where a category can come from
+## Where a category comes from
 
-The interesting question, because a hardcoded list of every item in the game is not maintainable and
-the hub rejects raw ids as config input. Three sources, in precedence order:
+**Decided 2026-09-09.** The categories are magic, ranged, melee, potions, food, runes, herbs, seeds,
+tools and other. A curated set of names per category is the primary source, and the derived signals
+below are the fallback for anything the sets do not name, rather than the other way round.
 
 1. **What the player said.** A name list per category, comma separated, `*` wildcards, exactly like
-   the shop feature's protected list. Always wins, and covers anything the other two get wrong.
-2. **What the game says.** This is the part that avoids the maintenance burden:
+   the shop feature's lists. Always wins.
+2. **The curated sets.** Hardcoded names per category, shipped with the plugin.
+3. **What the game says**, for anything still unnamed:
    - `ItemComposition.getInventoryActions()` contains `Eat` for food and `Drink` for potions. Local,
      instant, reliable.
    - `ItemManager.getItemStats(id).getEquipment()` gives the equipment slot and the attack bonuses
@@ -63,6 +64,46 @@ the hub rejects raw ids as config input. Three sources, in precedence order:
    - `isStackable`, `getNote`, and name patterns cover runes, herbs, seeds and logs.
 3. **Fallback.** Anything unclassified lands in a single bucket that the player can position, rather
    than being dropped to the bottom silently.
+
+## When the sort is active
+
+**Decided 2026-09-09:** only for a rebag pile, not every ground item menu in the game.
+
+Detecting one, in order of how much I trust it:
+
+- **The bag leaving the inventory.** A looting bag disappearing from the inventory on the same tick
+  as a burst of items landing on one tile is unambiguous, and the plugin already watches inventory
+  departures for the raid feature.
+- **Instantly public items.** `TileItem.getVisibleTime()` is when an item becomes visible to other
+  players. An item the player drops is private for a minute first; the contents of a destroyed bag
+  in the Wilderness are visible immediately. A self-owned item that is already public at spawn is
+  therefore a strong tell.
+- **The burst itself.** Many items appearing on one tile within a tick or two, which also catches
+  deathpiles, where the same problem exists.
+
+Despawn time alone does not discriminate: `getDespawnTime()` is an hour out for an ordinary drop as
+well, so it confirms a pile is fresh rather than that it came from a bag.
+
+## Loadouts
+
+Asked for 2026-09-09: named presets, with a few shipped ready to use. Wildy clues wants spade, clue
+and construction cape at the top; a raid trip wants brews and gear. One fixed category order cannot
+serve both, and editing the order every time defeats the point.
+
+A loadout is two things: the category order, and a short list of item names pinned above every
+category. The pins are what make the wildy clue case work, since a spade belongs to no category
+worth promoting on its own.
+
+Shape, from cheapest to best:
+
+- **A dropdown of shipped loadouts plus one custom slot.** An enum in the config, with the custom
+  order and pins in two text items. Cheap, and the shipped ones are curated data in their own file.
+- **Loadouts stored as JSON in a config string**, the way deathbank-utility persists its state
+  through Gson. Any number of them, still no new UI, but editing raw JSON in a config box is grim.
+- **A panel with drag to reorder and a loadout picker.** What this wants to be eventually.
+
+Switching wants to be fast, since it happens at the pile: a config dropdown is one click away
+through the sidebar, a hotkey is faster and is the same shape as geheur's hotkeyable swaps.
 
 ## Ordering interface
 
@@ -94,14 +135,14 @@ Core's Ground Items collapse feature also rewrites entries, on `ClientTick` rath
 - Whether ground item entries are always one contiguous run, or several, as geheur's code assumes.
 - Whether `getItemStats` is populated by the time a rebag happens, and what fraction of a typical
   bag it can classify without help.
-- What an inventory-full pile does: only stackables already held can be taken, so the sort should
-  account for that rather than putting an untakeable item on left-click.
+- What an inventory-full pile does. Only stackables already held can be taken, so the sort could put
+  an untakeable item on left-click. Deprioritised: it matters little for this use case.
+
+**Order within a category:** leave the game's own order alone.
 
 ## Open questions for Jake
 
-1. The category set. Magic, ranged, melee, potions, food, runes, herbs, seeds, tools, other? Or
-   fewer, bigger buckets?
-2. Should the sort always be on, on a hotkey, or only when a pile is large enough to look like a
-   rebag?
-3. Within a category, what order? Value, quantity, name, or leave the game's order alone?
-4. The Destroy conflict above: conditional removal, or leave it to the toggle?
+1. Whether the curated sets ship as one file per category or one file with a category per block.
+2. Whether an unrecognised item sits above or below the categories that were recognised.
+3. Whether a deathpile should trigger the sort too. It produces the same heap, and the burst
+   detection would catch it for free.
