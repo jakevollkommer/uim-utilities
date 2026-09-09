@@ -138,13 +138,10 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--borde
 <section id="conflict">
   <h2><span class="n">03</span> This collides with a feature we already shipped</h2>
   <div class="card decision">
-    <span class="chip">Decision 1</span>
+    <span class="chip" style="background:transparent;border:1px solid var(--border);color:var(--muted)">Decision 1 &middot; settled</span>
     <h3>The looting bag feature removes Destroy. Rebagging is destroying the bag on purpose.</h3>
-    <div class="options">
-      <div class="option"><span class="tag">A</span><span>Remove Destroy only <b>outside</b> the Wilderness, where it deletes items, and leave it alone inside, where it is the intended move. The rule then matches the game's own behaviour.</span></div>
-      <div class="option"><span class="tag">B</span><span>Keep the removal unconditional and let the player toggle the setting off to rebag.</span></div>
-    </div>
-    <p class="rec"><b>A is better protection and better ergonomics</b>, but it is conditional menu entry removal, which the hub's rejected-features page is wary of. B is safe with reviewers and mildly annoying twice a week.</p>
+    <p><b>Settled.</b> The setting is now Allow, Remove, or Allow in the Wilderness, defaulting to the last, which is the shape lootbag-utilities already ships on the hub. Shipped in PR #2.</p>
+    <p class="rec">Context worth keeping: an ultimate ironman deathpiles to empty the bag almost every time. Destroying it is for when a deathbank is active and deathpiling is impossible, so they accept a few seconds of Wilderness risk. <b>A deathpile leaves the same unordered heap</b>, so the sort should not be tied to bag destruction alone.</p>
   </div>
 </section>
 
@@ -162,12 +159,13 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--borde
 
 <section id="categories">
   <h2><span class="n">05</span> Where a category comes from</h2>
-  <p>The interesting question, because a hardcoded list of every item in the game is not maintainable and the hub rejects raw ids as config input. Three sources, in precedence order.</p>
+  <p><b>Settled:</b> magic, ranged, melee, potions, food, runes, herbs, seeds, tools, other. A curated set of names per category is the primary source, and the signals the game gives us are the fallback for whatever the sets do not name, rather than the other way round.</p>
   <div class="scroller">
     <table>
       <thead><tr><th>Source</th><th>What it can tell us</th><th>Catch</th></tr></thead>
       <tbody>
-        <tr><td>Your list</td><td>A name list per category, comma separated, <code>*</code> wildcards, exactly like the shop feature's protected list.</td><td>None. Always wins, and covers whatever the other two get wrong.</td></tr>
+        <tr><td>Your list</td><td>A name list per category, comma separated, <code>*</code> wildcards, exactly like the shop feature's lists.</td><td>None. Always wins.</td></tr>
+        <tr><td>Curated sets</td><td>Hardcoded names per category, shipped with the plugin. The primary source.</td><td>Needs maintaining as the game adds items, which is what the fallbacks below are for.</td></tr>
         <tr><td>Item actions</td><td><code>getInventoryActions()</code> holds <code>Eat</code> for food and <code>Drink</code> for potions.</td><td>None. Local and instant.</td></tr>
         <tr><td>Equipment stats</td><td>Slot and attack bonuses. Whichever of <code>amagic</code>, <code>arange</code> or the melee bonuses dominates says what a piece is, so a Bandos chestplate classifies itself.</td><td>Fetched over the network at startup, so it can be missing early or absent offline. Must fall back rather than misfile.</td></tr>
         <tr><td>Name patterns</td><td>Runes, herbs, seeds, logs, bars.</td><td>Crude, but it is the floor under the other two.</td></tr>
@@ -208,7 +206,7 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--borde
     <div class="check"><span class="box"></span><span>Whether the client caps how many entries a menu can hold, since a rebag pile is large.</span></div>
     <div class="check"><span class="box"></span><span>Whether ground item entries are always one contiguous run, or several.</span></div>
     <div class="check"><span class="box"></span><span>Whether the equipment stats are loaded by the time a rebag happens, and what fraction of a real bag they classify unaided.</span></div>
-    <div class="check"><span class="box"></span><span>What a full inventory does: only stackables you already hold can be taken, so the sort should not put an untakeable item on left-click.</span></div>
+    <div class="check"><span class="box"></span><span>What a full inventory does. Only stackables you already hold can be taken, so the sort could put an untakeable item on left-click. Deprioritised, since it matters little here.</span></div>
   </div>
 </section>
 
@@ -220,14 +218,17 @@ footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--borde
     <p>Magic, ranged, melee, potions, food, runes, herbs, seeds, tools, other? Or fewer, bigger buckets? Everything else follows from this, so it is the one to answer first.</p>
   </div>
   <div class="card decision">
-    <span class="chip">Decision 4</span>
-    <h3>When the sort is active</h3>
-    <p>Always on, on a hotkey, or only when a pile is big enough to look like a rebag?</p>
+    <span class="chip" style="background:transparent;border:1px solid var(--border);color:var(--muted)">Decisions 4 and 5 &middot; settled</span>
+    <h3>Only on a rebag pile, and the game's own order within a category</h3>
+    <p>Detecting a rebag pile, in order of how much I trust it: <b>the bag leaving the inventory</b> on the same tick as a burst of items landing on one tile, which the plugin already watches for the raid feature; <b>instantly public items</b>, since <code>TileItem.getVisibleTime()</code> says when others can see an item and a destroyed bag's contents are public immediately while your own drops stay private for a minute; and <b>the burst itself</b>, many items on one tile within a tick or two, which catches deathpiles for free.</p>
+    <p class="rec">Despawn time alone will not do it: <code>getDespawnTime()</code> is an hour out for an ordinary drop too, so it says a pile is fresh, not that it came from a bag.</p>
   </div>
   <div class="card decision">
-    <span class="chip">Decision 5</span>
-    <h3>Order within a category</h3>
-    <p>By value, by quantity, by name, or leave the game's own order alone?</p>
+    <span class="chip">Open</span>
+    <h3>Loadouts</h3>
+    <p>Named presets with a few shipped ready to use. Wildy clues wants spade, clue and construction cape on top; a raid trip wants brews and gear. One fixed category order cannot serve both.</p>
+    <p>A loadout is the category order plus a short list of item names pinned above every category, which is what makes the spade case work since a spade belongs to no category worth promoting. Shapes, cheapest first: a dropdown of shipped loadouts plus one custom slot; loadouts as JSON in a config string, the way deathbank-utility persists state; or the panel with drag to reorder that this wants to be eventually.</p>
+    <p class="rec">Switching has to be fast, because it happens at the pile. A config dropdown is one click through the sidebar, a hotkey is faster and is the same shape as geheur's hotkeyable swaps.</p>
   </div>
 </section>
 
