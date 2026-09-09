@@ -8,11 +8,13 @@ import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.VarbitID;
 
 /**
  * Destroying a looting bag outside the Wilderness takes everything inside it with it, which for an
- * ultimate ironman is the whole point of carrying one. The Destroy option comes off the bag while
- * the setting is on, so there is nothing to misclick, and turning the setting off gives it back.
+ * ultimate ironman is the whole point of carrying one. Inside the Wilderness the same click drops
+ * the contents on the floor, which is the deliberate move when a deathbank rules out deathpiling, so
+ * by default the option is removed everywhere except there.
  */
 @Singleton
 public class LootingBagProtection implements Feature
@@ -39,11 +41,29 @@ public class LootingBagProtection implements Feature
 	{
 		// Most menu entries carry no item at all, so the id is the cheap way out of this
 		boolean isLootingBagEntry = LOOTING_BAG_IDS.contains(event.getItemId());
-		if (!isLootingBagEntry || !DESTROY.equals(event.getOption()) || !config.hideLootingBagDestroy())
+		if (!isLootingBagEntry || !DESTROY.equals(event.getOption()) || !shouldRemoveDestroy())
 		{
 			return;
 		}
 
 		client.getMenu().removeMenuEntry(event.getMenuEntry());
+	}
+
+	private boolean shouldRemoveDestroy()
+	{
+		switch (config.lootingBagDestroy())
+		{
+			case REMOVE:
+				return true;
+			case ALLOW_IN_WILDERNESS:
+				return !isInWilderness();
+			default:
+				return false;
+		}
+	}
+
+	private boolean isInWilderness()
+	{
+		return client.getVarbitValue(VarbitID.INSIDE_WILDERNESS) == 1;
 	}
 }
