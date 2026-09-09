@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rebagging Pickup Order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+*{ margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --ground: #F3F1EC; --surface: #FFFFFF; --surface-2: #E9E6DF; --border: #D6D1C6; --border-soft: #E4E0D7;
+  --text: #1A1712; --muted: #5F594E; --accent: #A4471B; --accent-quiet: #F0E2D8;
+  --decision: #7A5B00; --decision-quiet: #F6EBCD;
+  --menu-bg: #5A5348; --menu-head: #3E3931; --menu-option: #F2EFE8; --menu-item: #FF9040; --menu-alt: #7FD46A; --menu-alt2: #F2E85C;
+  --shadow: 0 1px 2px rgba(26,23,18,.05), 0 10px 30px -22px rgba(26,23,18,.4);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #14120F; --surface: #1C1A16; --surface-2: #23201B; --border: #35312A; --border-soft: #2A2721;
+    --text: #EDE9E1; --muted: #A29A8B; --accent: #FF9040; --accent-quiet: #2E2018;
+    --decision: #E8C25A; --decision-quiet: #2A2314;
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 12px 34px -24px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #14120F; --surface: #1C1A16; --surface-2: #23201B; --border: #35312A; --border-soft: #2A2721;
+  --text: #EDE9E1; --muted: #A29A8B; --accent: #FF9040; --accent-quiet: #2E2018;
+  --decision: #E8C25A; --decision-quiet: #2A2314;
+  --shadow: 0 1px 2px rgba(0,0,0,.5), 0 12px 34px -24px rgba(0,0,0,.9);
+}
+body { background: var(--ground); color: var(--text); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 820px; margin: 0 auto; padding: 48px 22px 110px; display: flex; flex-direction: column; gap: 46px; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .88em; background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 4px; padding: 1px 5px; }
+header { display: flex; flex-direction: column; gap: 14px; }
+.kicker { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: "Bricolage Grotesque", ui-sans-serif, sans-serif; font-weight: 700; font-size: clamp(34px, 6vw, 54px); line-height: 1.02; letter-spacing: -.02em; text-wrap: balance; }
+.standfirst { font-size: 18px; color: var(--muted); max-width: 60ch; }
+.status { display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; padding: 5px 12px; border-radius: 999px; background: var(--accent-quiet); color: var(--accent); border: 1px solid var(--border); }
+section { display: flex; flex-direction: column; gap: 16px; scroll-margin-top: 20px; }
+h2 { font-family: "Bricolage Grotesque", ui-sans-serif, sans-serif; font-weight: 700; font-size: 25px; letter-spacing: -.01em; display: flex; gap: 12px; align-items: baseline; }
+h2 .n { font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 400; color: var(--accent); }
+h3 { font-size: 16px; font-weight: 600; }
+p { max-width: 66ch; }
+ul { display: flex; flex-direction: column; gap: 9px; padding-left: 20px; }
+li { max-width: 64ch; }
+li::marker { color: var(--accent); }
+.menus { display: grid; grid-template-columns: 1fr; gap: 18px; }
+@media (min-width: 700px) { .menus { grid-template-columns: 1fr 1fr; } }
+.menu { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); }
+.menu .cap { background: var(--surface-2); border-bottom: 1px solid var(--border); padding: 9px 14px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.menu ol { list-style: none; background: var(--menu-bg); padding: 6px 0; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; line-height: 1.5; }
+.menu li { padding: 1px 12px; color: var(--menu-option); max-width: none; }
+.menu li .it { color: var(--menu-item); } .menu li .g { color: var(--menu-alt); } .menu li .y { color: var(--menu-alt2); }
+.menu li.top { background: var(--menu-head); }
+.menu .note { padding: 9px 14px; font-size: 12.5px; color: var(--muted); background: var(--surface); border-top: 1px solid var(--border); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); }
+.card.decision { border-left: 3px solid var(--decision); }
+.chip { align-self: flex-start; font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: var(--decision-quiet); color: var(--decision); }
+.card h3 { font-size: 17px; }
+.options { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+.option { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; font-size: 15px; }
+.option .tag { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--accent); }
+.rec { font-size: 14px; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 10px; }
+.rec b { color: var(--text); font-weight: 600; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+td:first-child { white-space: nowrap; font-weight: 500; }
+.scroller { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+.checks { display: flex; flex-direction: column; gap: 10px; }
+.check { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; font-size: 15px; }
+.check .box { width: 15px; height: 15px; border: 1.5px solid var(--muted); border-radius: 3px; margin-top: 5px; }
+footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--border); padding-top: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">UIM Utilities &middot; feature design</div>
+  <h1>Left-click the pile and get what you wanted</h1>
+  <p class="standfirst">Rebagging drops a bag's worth of items on the floor in no order at all. This is a plan for making the pile come back in an order you chose, and the decisions I need from you before any of it is written.</p>
+  <span class="status">Nothing built yet</span>
+</header>
+
+<section id="problem">
+  <h2><span class="n">01</span> The problem</h2>
+  <p>The pile arrives in arbitrary order, so taking what you actually want means reading twenty-odd <code>Take</code> lines and right-clicking through them one at a time, holding the order in your head as you go. The goal is to spam left-click instead.</p>
+  <div class="menus">
+    <div class="menu">
+      <div class="cap">What the pile gives you</div>
+      <ol>
+        <li class="top">Take <span class="g">Chaos rune</span></li>
+        <li>Take <span class="it">Toadflax seed</span></li>
+        <li>Take <span class="y">Snapdragon</span></li>
+        <li>Take <span class="it">Torstol</span></li>
+        <li>Take <span class="it">Blood rune</span></li>
+        <li>Take <span class="it">Saradomin brew(1)</span></li>
+        <li>Take <span class="g">Steel bar</span></li>
+        <li>Take <span class="y">Death rune</span></li>
+        <li>Take <span class="it">Prayer potion(1)</span></li>
+        <li>Take <span class="g">Uncharged toxic trident</span></li>
+      </ol>
+      <div class="note">Left-click takes a chaos rune. The brews are eleven lines down.</div>
+    </div>
+    <div class="menu">
+      <div class="cap">What it could give you</div>
+      <ol>
+        <li class="top">Take <span class="it">Saradomin brew(1)</span></li>
+        <li>Take <span class="it">Prayer potion(1)</span></li>
+        <li>Take <span class="g">Uncharged toxic trident</span></li>
+        <li>Take <span class="y">Death rune</span></li>
+        <li>Take <span class="it">Blood rune</span></li>
+        <li>Take <span class="g">Chaos rune</span></li>
+        <li>Take <span class="y">Snapdragon</span></li>
+        <li>Take <span class="it">Torstol</span></li>
+        <li>Take <span class="it">Toadflax seed</span></li>
+        <li>Take <span class="g">Steel bar</span></li>
+      </ol>
+      <div class="note">Potions, then magic gear, then runes, then herbs. Spam left-click and they arrive in that order.</div>
+    </div>
+  </div>
+</section>
+
+<section id="rebagging">
+  <h2><span class="n">02</span> How rebagging actually works</h2>
+  <ul>
+    <li>Destroying the bag <b>in the Wilderness</b> drops the contents on the floor. Anywhere else, Ferox Enclave included, the contents are destroyed permanently.</li>
+    <li>The pile lasts <b>60 minutes</b>, counted only while logged in, and in the Wilderness it is visible to everyone immediately. Sorting has to be fast, not merely convenient.</li>
+    <li>Deathpiling is the alternative and produces the same problem: a pile in arbitrary order.</li>
+  </ul>
+</section>
+
+<section id="conflict">
+  <h2><span class="n">03</span> This collides with a feature we already shipped</h2>
+  <div class="card decision">
+    <span class="chip">Decision 1</span>
+    <h3>The looting bag feature removes Destroy. Rebagging is destroying the bag on purpose.</h3>
+    <div class="options">
+      <div class="option"><span class="tag">A</span><span>Remove Destroy only <b>outside</b> the Wilderness, where it deletes items, and leave it alone inside, where it is the intended move. The rule then matches the game's own behaviour.</span></div>
+      <div class="option"><span class="tag">B</span><span>Keep the removal unconditional and let the player toggle the setting off to rebag.</span></div>
+    </div>
+    <p class="rec"><b>A is better protection and better ergonomics</b>, but it is conditional menu entry removal, which the hub's rejected-features page is wary of. B is safe with reviewers and mildly annoying twice a week.</p>
+  </div>
+</section>
+
+<section id="mechanism">
+  <h2><span class="n">04</span> The mechanism, and who has done it already</h2>
+  <p>Settled, with precedent on both sides of the hub line.</p>
+  <ul>
+    <li><code>client.getMenuEntries()</code> is an array where <b>index 0 is the bottom of the menu and the last element is the top</b>, which is the left-click action. Reordering the array reorders the menu.</li>
+    <li>Ground item entries are the menu types from <code>WIDGET_TARGET_ON_GROUND_ITEM</code> through <code>GROUND_ITEM_FIFTH_OPTION</code>, and <code>getIdentifier()</code> on one is the item id.</li>
+    <li><b>Core precedent:</b> RuneLite's own Ground Items plugin rewrites the whole entry array every client tick to collapse duplicates and append <code>x N</code> to their names.</li>
+    <li><b>Hub precedent:</b> geheur's more-menu-entry-swaps sorts ground item entries by price. It finds each contiguous run of them, sorts that run, and writes it back in place, leaving every other entry untouched. This feature is that, with a category rank instead of a price.</li>
+  </ul>
+  <p>Sorting is a swap rather than a removal, so it sits on the accepted side of the hub's menu rules.</p>
+</section>
+
+<section id="categories">
+  <h2><span class="n">05</span> Where a category comes from</h2>
+  <p>The interesting question, because a hardcoded list of every item in the game is not maintainable and the hub rejects raw ids as config input. Three sources, in precedence order.</p>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Source</th><th>What it can tell us</th><th>Catch</th></tr></thead>
+      <tbody>
+        <tr><td>Your list</td><td>A name list per category, comma separated, <code>*</code> wildcards, exactly like the shop feature's protected list.</td><td>None. Always wins, and covers whatever the other two get wrong.</td></tr>
+        <tr><td>Item actions</td><td><code>getInventoryActions()</code> holds <code>Eat</code> for food and <code>Drink</code> for potions.</td><td>None. Local and instant.</td></tr>
+        <tr><td>Equipment stats</td><td>Slot and attack bonuses. Whichever of <code>amagic</code>, <code>arange</code> or the melee bonuses dominates says what a piece is, so a Bandos chestplate classifies itself.</td><td>Fetched over the network at startup, so it can be missing early or absent offline. Must fall back rather than misfile.</td></tr>
+        <tr><td>Name patterns</td><td>Runes, herbs, seeds, logs, bars.</td><td>Crude, but it is the floor under the other two.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Anything still unclassified lands in one bucket you can position, rather than being dropped to the bottom silently.</p>
+</section>
+
+<section id="ordering">
+  <h2><span class="n">06</span> How you set the order</h2>
+  <p>You asked for drag and drop. That means a side panel, which is a bigger build and a bigger review surface, so I would stage it.</p>
+  <ul>
+    <li><b>First:</b> an ordered, comma separated category list in the config. The order is the text. Editable, hub-friendly, no new UI.</li>
+    <li><b>Later:</b> a panel with drag to reorder, once the category model has proven itself in a real rebag. Deathbank-utility already ships a panel, so there is a pattern to copy.</li>
+  </ul>
+</section>
+
+<section id="coexistence">
+  <h2><span class="n">07</span> You already run another sorter</h2>
+  <div class="card decision">
+    <span class="chip">Decision 2</span>
+    <h3>geheur's plugin sorts the same ground item block on the same event.</h3>
+    <p>Two plugins sorting one array means last writer wins, and the order looks random depending on subscriber order. This needs deciding rather than discovering.</p>
+    <div class="options">
+      <div class="option"><span class="tag">A</span><span>Set an explicit subscriber priority so this plugin sorts last.</span></div>
+      <div class="option"><span class="tag">B</span><span>Detect that plugin's ground item sort and stand down while it is on.</span></div>
+      <div class="option"><span class="tag">C</span><span>Document that its price sort should be turned off.</span></div>
+    </div>
+    <p class="rec">Core's Ground Items collapse feature also rewrites entries, on a different event, and appends <code>x N</code> to names. Any name matching has to tolerate that suffix either way.</p>
+  </div>
+</section>
+
+<section id="verify">
+  <h2><span class="n">08</span> To verify before building</h2>
+  <div class="checks">
+    <div class="check"><span class="box"></span><span>That the last array element really is the left-click entry, seen in a real pile rather than inferred.</span></div>
+    <div class="check"><span class="box"></span><span>Whether the client caps how many entries a menu can hold, since a rebag pile is large.</span></div>
+    <div class="check"><span class="box"></span><span>Whether ground item entries are always one contiguous run, or several.</span></div>
+    <div class="check"><span class="box"></span><span>Whether the equipment stats are loaded by the time a rebag happens, and what fraction of a real bag they classify unaided.</span></div>
+    <div class="check"><span class="box"></span><span>What a full inventory does: only stackables you already hold can be taken, so the sort should not put an untakeable item on left-click.</span></div>
+  </div>
+</section>
+
+<section id="questions">
+  <h2><span class="n">09</span> What I need from you</h2>
+  <div class="card decision">
+    <span class="chip">Decision 3</span>
+    <h3>The category set</h3>
+    <p>Magic, ranged, melee, potions, food, runes, herbs, seeds, tools, other? Or fewer, bigger buckets? Everything else follows from this, so it is the one to answer first.</p>
+  </div>
+  <div class="card decision">
+    <span class="chip">Decision 4</span>
+    <h3>When the sort is active</h3>
+    <p>Always on, on a hotkey, or only when a pile is big enough to look like a rebag?</p>
+  </div>
+  <div class="card decision">
+    <span class="chip">Decision 5</span>
+    <h3>Order within a category</h3>
+    <p>By value, by quantity, by name, or leave the game's own order alone?</p>
+  </div>
+</section>
+
+<footer>Research behind this: RuneLite's Ground Items plugin and ItemManager, geheur's more-menu-entry-swaps, and the ultimate ironman guide's item management page. The same notes live in REBAGGING.md in the repo.</footer>
+
+</div>
+</body>
+</html>

@@ -132,6 +132,11 @@ deprioritizing Destroy instead, the same treatment feature 1 gives the raid exit
 unchecked: the bank placeholder ids (18274, 22587), which are not matched on the assumption that
 placeholders show Release rather than Destroy.
 
+**Now a three-way setting, 2026-09-09**, matching lootbag-utilities on the hub: Allow, Remove, or
+Allow in the Wilderness, which is the default. Destroying the bag in the Wilderness is how an
+ultimate ironman empties it when a deathbank rules out deathpiling, so removing the option there was
+blocking the one use that is deliberate. The Wilderness test is `VarbitID.INSIDE_WILDERNESS`.
+
 ## Feature 3 — no selling protected items to shops
 
 **Status: implemented, not yet verified in-game.** Branch `shop-sell-protection`, stacked

@@ -26,7 +26,9 @@
  */
 package com.uimutilities;
 
+import com.uimutilities.lootingbag.LootingBagDestroy;
 import com.uimutilities.shops.DefaultProtectedItems;
+import com.uimutilities.shops.SellProtectionMode;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -37,6 +39,7 @@ public interface UimUtilitiesConfig extends Config
 {
 	String GROUP = "uimutilities";
 	String PROTECTED_ITEMS_KEY = "protectedItems";
+	String SELLABLE_ITEMS_KEY = "sellableItems";
 	String SUGGEST_BUTTON_KEY = "suggestButton";
 	String SUPPORT_BUTTON_KEY = "supportButton";
 
@@ -79,15 +82,15 @@ public interface UimUtilitiesConfig extends Config
 	String lootingBagSection = "lootingBagSection";
 
 	@ConfigItem(
-		keyName = "hideLootingBagDestroy",
-		name = "Hide the Destroy option",
-		description = "Take Destroy off the looting bag, which loses everything inside it",
+		keyName = "lootingBagDestroy",
+		name = "Destroy option",
+		description = "Destroying the bag loses everything inside it, except in the Wilderness where the contents drop on the floor",
 		section = lootingBagSection,
 		position = 0
 	)
-	default boolean hideLootingBagDestroy()
+	default LootingBagDestroy lootingBagDestroy()
 	{
-		return true;
+		return LootingBagDestroy.ALLOW_IN_WILDERNESS;
 	}
 
 	@ConfigSection(
@@ -98,27 +101,55 @@ public interface UimUtilitiesConfig extends Config
 	String shopSection = "shopSection";
 
 	@ConfigItem(
-		keyName = "blockSelling",
-		name = "Block selling protected items",
-		description = "Take the Sell options off the items on the list below",
+		keyName = "sellProtection",
+		name = "Sell protection",
+		description = "Block the items on the block list, or block everything except the items on the sellable list",
 		section = shopSection,
 		position = 0
 	)
-	default boolean blockSelling()
+	default SellProtectionMode sellProtection()
 	{
-		return true;
+		return SellProtectionMode.BLOCK_LISTED;
 	}
+
+	@ConfigSection(
+		name = "Shops: blocked items",
+		description = "Used by Block listed items. Item names, comma separated, * matches any characters, so *bones and Rune * both work. A plain name also covers that item's charged, ornamented and degraded variants",
+		position = 3,
+		closedByDefault = true
+	)
+	String blockListSection = "blockListSection";
 
 	@ConfigItem(
 		keyName = PROTECTED_ITEMS_KEY,
-		name = "Protected items",
-		description = "Item names, comma separated. * matches anything, and a name also covers its charged and degraded variants",
-		section = shopSection,
-		position = 1
+		name = "Blocked items",
+		description = "Names shops may not buy. Comma separated, * matches any characters, e.g. *bones, Rune *",
+		section = blockListSection,
+		position = 0
 	)
 	default String protectedItems()
 	{
 		return DefaultProtectedItems.NAMES;
+	}
+
+	@ConfigSection(
+		name = "Shops: sellable items",
+		description = "Used by Only allow listed items. Item names, comma separated, * matches any characters, so *bones and Rune * both work. Everything not listed loses its Sell options",
+		position = 4,
+		closedByDefault = true
+	)
+	String allowListSection = "allowListSection";
+
+	@ConfigItem(
+		keyName = SELLABLE_ITEMS_KEY,
+		name = "Sellable items",
+		description = "The only names shops may buy. Comma separated, * matches any characters, e.g. *bones, Rune *",
+		section = allowListSection,
+		position = 0
+	)
+	default String sellableItems()
+	{
+		return "";
 	}
 
 	@ConfigSection(

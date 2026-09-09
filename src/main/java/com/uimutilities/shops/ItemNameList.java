@@ -8,13 +8,13 @@ import net.runelite.client.util.Text;
 import net.runelite.client.util.WildcardMatcher;
 
 /**
- * The item names the player has asked to protect, in the shape of the Ground Items lists: comma
- * separated, with * wildcards.
+ * A list of item names the player wrote, in the shape of the Ground Items lists: comma separated,
+ * with * wildcards.
  *
  * A plain name also covers that item's variants, which carry the base name plus a suffix, so one
  * entry protects a trident of the seas full or empty and a barrows piece at any degradation.
  */
-class ProtectedItemList
+class ItemNameList
 {
 	// Names are matched far more often than the list changes, so exact entries answer from a set and
 	// only wildcards are walked
